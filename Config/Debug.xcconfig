@@ -1,0 +1,27 @@
+// Lychee Hello — Debug (dev environment).
+//
+// Environment values live here rather than in Swift so no URL or key is ever hardcoded in source,
+// and so a build can be repointed without a code change. Read at runtime via `AppEnvironment`,
+// which sources them from Info.plist.
+//
+// NOTE ON xcconfig ESCAPING: `//` starts a comment even inside a value, so a URL scheme must be
+// written with the `SLASH` indirection below. This trips people up constantly.
+
+SLASH = /
+
+// Backend (decision U7). There is no staging tier at launch; the abstraction supports adding one
+// without a code change — add Staging.xcconfig and a matching scheme.
+//API_BASE_URL = https:$(SLASH)$(SLASH)apitest.lycheeapp.org/rest/lychee-v2
+API_BASE_URL = https:$(SLASH)$(SLASH)66dc-188-161-134-80.ngrok-free.app/rest/lychee-v2
+API_HELLO_PATH = /hello/v1
+
+// LYCHEE-SIGN-V1 client identity (decision U4).
+// Debug uses the committed non-prod test key, matching scripts/seed-hello-signing.sql.
+// The private key is NOT stored here — see SigningKeyProvider for how debug builds load it.
+LYCHEE_SIGNING_CLIENT_ID = hello-ios
+LYCHEE_SIGNING_KEY_ID = test-key-1
+
+LYCHEE_ENVIRONMENT_NAME = dev
+
+// Verbose networking logs. Never enabled in Release.
+LYCHEE_LOG_NETWORK = YES

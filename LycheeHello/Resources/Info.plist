@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Lychee Hello</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+
+	<!-- Arabic is the primary market (+970 / ₪ / Arabic backend templates), so the app must
+	     support RTL from day one rather than retrofitting it. -->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ar</string>
+	</array>
+
+	<!-- Environment, injected from the active xcconfig. Read by AppEnvironment; nothing in Swift
+	     hardcodes a URL or client id. -->
+	<key>LYCHEE_API_BASE_URL</key>
+	<string>$(API_BASE_URL)</string>
+	<key>LYCHEE_API_HELLO_PATH</key>
+	<string>$(API_HELLO_PATH)</string>
+	<key>LYCHEE_SIGNING_CLIENT_ID</key>
+	<string>$(LYCHEE_SIGNING_CLIENT_ID)</string>
+	<key>LYCHEE_SIGNING_KEY_ID</key>
+	<string>$(LYCHEE_SIGNING_KEY_ID)</string>
+	<key>LYCHEE_ENVIRONMENT_NAME</key>
+	<string>$(LYCHEE_ENVIRONMENT_NAME)</string>
+	<key>LYCHEE_LOG_NETWORK</key>
+	<string>$(LYCHEE_LOG_NETWORK)</string>
+
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>BrandSurface</string>
+	</dict>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+
+	<!-- Face ID / Touch ID gate before confirming a payment. -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>Lychee Hello uses Face ID to confirm your payments.</string>
+
+	<!-- App Transport Security left at its secure defaults: no exceptions, TLS enforced. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+</dict>
+</plist>

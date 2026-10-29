@@ -1,0 +1,21 @@
+// Lychee Hello — Release (production environment).
+//
+// ⚠️ The production signing private key is NOT in this file and must never be committed.
+// It is injected at build time by the release pipeline (see README, "Production signing keys").
+// LYCHEE_SIGNING_KEY_ID below must match the key_id of the PUBLIC key registered in
+// signing_client_key for client `hello-ios`.
+
+SLASH = /
+
+API_BASE_URL = https:$(SLASH)$(SLASH)apiproduction.lycheeapp.org/rest/lychee-v2
+API_HELLO_PATH = /hello/v1
+
+LYCHEE_SIGNING_CLIENT_ID = hello-ios
+// Placeholder — replaced by the release pipeline with the real rotated key id, e.g.
+// hello-prod-2026-01. Left non-empty so a misconfigured build fails loudly at startup rather
+// than silently sending unsigned requests.
+LYCHEE_SIGNING_KEY_ID = REPLACE_AT_BUILD_TIME
+
+LYCHEE_ENVIRONMENT_NAME = prod
+
+LYCHEE_LOG_NETWORK = NO
