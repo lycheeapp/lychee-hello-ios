@@ -184,12 +184,12 @@ struct ChatComposer: View {
                     Label("Pay from balance", systemImage: "wallet.pass")
                 }
                 .disabled(!canPay)
+                // A voucher pays for itself, so it works before the wallet is active.
                 Button {
                     onPick(.voucher)
                 } label: {
                     Label("Use a voucher", systemImage: "ticket")
                 }
-                .disabled(!canPay)
                 Button(action: onBalance) {
                     Label("Check balance", systemImage: "banknote")
                 }

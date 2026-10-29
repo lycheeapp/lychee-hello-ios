@@ -86,7 +86,12 @@ struct ChatView: View {
             Task { await model.refresh() }
         }
         .sheet(item: $model.pendingIntent) { intent in
-            PaymentReviewSheet(intent: intent) {
+            PaymentReviewSheet(intent: intent, onSettled: { settled in
+                // The receipt is in the confirm response: draw it now, under the sheet, so it is
+                // there the moment the sheet closes.
+                model.applySettlement(settled)
+                Task { await coordinator.refreshBalance() }
+            }) {
                 // Clearing the binding is what dismisses an `.sheet(item:)` — deterministic, and
                 // it does not depend on the environment's dismiss action resolving correctly.
                 model.closePaymentSheet()
@@ -228,8 +233,9 @@ struct ChatView: View {
                         model.resumePendingPayment()
                     }
                 } else {
-                    // Settled, cancelled or expired — the receipt or notice below says which.
-                    ClosedPaymentRequestBubble(time: time, tail: tail)
+                    // Settled, cancelled or expired: the card says which, from the payment as the
+                    // server sent it with the card.
+                    ClosedPaymentRequestBubble(intent: message.paymentIntent, time: time, tail: tail)
                 }
             }
 

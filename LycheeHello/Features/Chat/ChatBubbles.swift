@@ -261,10 +261,18 @@ struct PaymentRequestBubble: View {
                     .foregroundStyle(Tokens.Chat.text)
                     .padding(.top, 2)
 
-                if let recipient = intent.recipientDisplay ?? intent.recipientCode {
-                    Text("to \(recipient)")
-                        .font(.subheadline)
-                        .foregroundStyle(Tokens.Chat.text)
+                if intent.paymentKind == .withdrawal {
+                    if let bank = intent.recipientDisplay ?? intent.recipientCode {
+                        Text("to \(bank)")
+                            .font(.subheadline)
+                            .foregroundStyle(Tokens.Chat.text)
+                    }
+                } else if let name = intent.recipientDisplay ?? intent.recipientCode {
+                    RecipientName(
+                        name: name,
+                        summary: intent.recipientDisplay != nil ? intent.recipientSummary : nil,
+                        verified: intent.isMerchantRecipient
+                    )
                 }
                 if intent.paymentKind == .withdrawal, let iban = intent.recipientCode, intent.recipientDisplay != nil {
                     Text("IBAN \(iban)")
@@ -310,21 +318,128 @@ struct PaymentRequestBubble: View {
     }
 }
 
-/// A review card whose payment has moved on — the receipt or notice below says how it ended.
+/// A review card whose payment has moved on. It says how it ended — paid (with the amount, the
+/// payee and the reference), cancelled, expired — from the payment as it stands now, which the
+/// server sends with the card.
 struct ClosedPaymentRequestBubble: View {
+    let intent: PaymentIntent?
     let time: String
     let tail: BubbleTail
 
     var body: some View {
-        HStack(alignment: .lastTextBaseline, spacing: 6) {
-            Label("Payment review closed", systemImage: "creditcard")
-                .font(.subheadline)
-                .foregroundStyle(Tokens.Chat.meta)
-            MessageMeta(time: time)
+        if let intent, let outcome = Outcome(intent) {
+            VStack(alignment: .leading, spacing: 3) {
+                Label(outcome.label, systemImage: outcome.icon)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(outcome.colour)
+
+                Text(Money.format(intent.paymentKind == .withdrawal
+                                  ? intent.amount : (intent.totalAmount ?? intent.amount)))
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(intent.status == .executed ? Tokens.Chat.text : Tokens.Chat.meta)
+                    .strikethrough(intent.status == .cancelled || intent.status == .expired)
+
+                if let name = intent.recipientDisplay ?? intent.recipientCode {
+                    Text("to \(name)")
+                        .font(.subheadline)
+                        .foregroundStyle(Tokens.Chat.text)
+                        .lineLimit(1)
+                }
+
+                HStack(alignment: .lastTextBaseline, spacing: 6) {
+                    if intent.status == .executed, let reference = intent.txnReference {
+                        Text("Ref \(reference)")
+                            .font(.footnote.monospaced())
+                            .foregroundStyle(Tokens.Chat.meta)
+                            .textSelection(.enabled)
+                    }
+                    Spacer(minLength: 0)
+                    MessageMeta(time: time)
+                }
+                .padding(.top, 2)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
+            .padding(.bottom, 6)
+            .frame(width: 272, alignment: .leading)
+            .modifier(BubbleBackground(fromUser: false, tail: tail))
+            .accessibilityElement(children: .combine)
+        } else {
+            HStack(alignment: .lastTextBaseline, spacing: 6) {
+                Label("Payment review closed", systemImage: "creditcard")
+                    .font(.subheadline)
+                    .foregroundStyle(Tokens.Chat.meta)
+                MessageMeta(time: time)
+            }
+            .padding(.horizontal, Tokens.Chat.bubblePaddingH)
+            .padding(.vertical, 8)
+            .modifier(BubbleBackground(fromUser: false, tail: tail))
         }
-        .padding(.horizontal, Tokens.Chat.bubblePaddingH)
-        .padding(.vertical, 8)
-        .modifier(BubbleBackground(fromUser: false, tail: tail))
+    }
+
+    /// How a payment ended, as the card says it. `nil`: nothing to say beyond "closed".
+    private struct Outcome {
+        let label: String
+        let icon: String
+        let colour: Color
+
+        init?(_ intent: PaymentIntent) {
+            switch intent.status {
+            case .executed:
+                switch intent.paymentKind {
+                case .withdrawal: label = "Withdrawal requested"
+                case .topUp: label = "Top-up sent"
+                default: label = "Paid"
+                }
+                icon = "checkmark.circle.fill"
+                colour = Tokens.Chat.success
+            case .confirmed:
+                label = "Processing…"
+                icon = "hourglass"
+                colour = Tokens.Chat.meta
+            case .cancelled:
+                label = "Payment cancelled"
+                icon = "xmark.circle"
+                colour = Tokens.Chat.meta
+            case .expired:
+                label = "Review expired"
+                icon = "clock.badge.xmark"
+                colour = Tokens.Chat.meta
+            default:
+                return nil
+            }
+        }
+    }
+}
+
+/// A payee's name with what kind of payee it is under it — "Rio Taxi ✓" / "Taxi · RIO1" — so the
+/// payer can check they are paying who they meant to.
+struct RecipientName: View {
+    let name: String
+    var summary: String?
+    var verified = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            HStack(spacing: 4) {
+                Text("to \(name)")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Tokens.Chat.text)
+                    .lineLimit(1)
+                if verified {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Tokens.Colour.brand)
+                        .accessibilityLabel("Verified business")
+                }
+            }
+            if let summary, !summary.isEmpty {
+                Text(summary)
+                    .font(.footnote)
+                    .foregroundStyle(Tokens.Chat.meta)
+                    .lineLimit(1)
+            }
+        }
     }
 }
 
@@ -358,9 +473,19 @@ struct PaymentReceiptBubble: View {
                     .padding(.top, 2)
 
                 if let recipient = fields["recipientDisplay"], !recipient.isEmpty {
-                    Text("to \(recipient)")
-                        .font(.subheadline)
-                        .foregroundStyle(Tokens.Chat.text)
+                    if kind == .withdrawal {
+                        Text("to \(recipient)")
+                            .font(.subheadline)
+                            .foregroundStyle(Tokens.Chat.text)
+                    } else {
+                        RecipientName(
+                            name: recipient,
+                            summary: PaymentRecipient.summary(
+                                type: fields["recipientType"], category: fields["recipientCategory"],
+                                code: fields["recipientCode"]),
+                            verified: PaymentRecipient.isMerchant(fields["recipientType"])
+                        )
+                    }
                 }
                 if let voucher = fields["voucherCodeMasked"], !voucher.isEmpty {
                     Text("Voucher \(voucher)")

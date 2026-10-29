@@ -1,5 +1,6 @@
 import SwiftUI
 import Observation
+import UIKit
 
 /// Review → authorise → result.
 ///
@@ -133,8 +134,15 @@ struct PaymentReviewSheet: View {
     /// appeared dead.
     let onClose: () -> Void
 
-    init(intent: PaymentIntent, onClose: @escaping () -> Void) {
+    /// The settled payment, as confirm returned it — with the receipt — so the chat can show it
+    /// under the sheet straight away.
+    let onSettled: (PaymentIntent) -> Void
+
+    init(intent: PaymentIntent,
+         onSettled: @escaping (PaymentIntent) -> Void = { _ in },
+         onClose: @escaping () -> Void) {
         _model = State(initialValue: PaymentReviewModel(intent: intent, repository: HelloRepository()))
+        self.onSettled = onSettled
         self.onClose = onClose
     }
 
@@ -154,6 +162,11 @@ struct PaymentReviewSheet: View {
                 }
             }
             .interactiveDismissDisabled(model.isBusy)
+        }
+        .onChange(of: model.phase) { _, phase in
+            if case let .succeeded(settled) = phase {
+                onSettled(settled)
+            }
         }
     }
 
@@ -248,7 +261,7 @@ struct PaymentReviewSheet: View {
                     .foregroundStyle(Tokens.Colour.textPrimary)
 
                 if let recipient = intent.recipientDisplay ?? intent.recipientCode {
-                    row("To", recipient)
+                    payeeCard(name: recipient, intent: intent)
                 }
                 if let voucher = intent.voucherCodeMasked {
                     row("Voucher", voucher)
@@ -281,25 +294,118 @@ struct PaymentReviewSheet: View {
         }
     }
 
+    /// The receipt, in the sheet: what was paid, to whom, when, the reference support will ask
+    /// for (copyable), and the balance left. The same receipt is already in the chat underneath.
     private func successContent(_ intent: PaymentIntent) -> some View {
-        VStack(spacing: Tokens.Spacing.lg) {
-            Spacer()
+        let receipt = intent.messages?.first { $0.type == .paymentReceipt }?.payloadFields ?? [:]
+        return VStack(spacing: Tokens.Spacing.lg) {
+            Spacer(minLength: Tokens.Spacing.md)
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 64))
                 .foregroundStyle(Tokens.Colour.brand)
-            Text(Money.format(intent.totalAmount ?? intent.amount))
-                .font(Tokens.Typography.largeTitle)
-                .foregroundStyle(Tokens.Colour.textPrimary)
-            if let reference = intent.txnReference {
-                Text("Reference \(reference)")
-                    .font(Tokens.Typography.caption)
+                .accessibilityHidden(true)
+            VStack(spacing: Tokens.Spacing.xs) {
+                Text(successHeadline(intent))
+                    .font(Tokens.Typography.headline)
                     .foregroundStyle(Tokens.Colour.textSecondary)
-                    .textSelection(.enabled)   // users are asked for this by support
+                Text(Money.format(intent.paymentKind == .withdrawal
+                                  ? intent.amount : (intent.totalAmount ?? intent.amount)))
+                    .font(Tokens.Typography.largeTitle)
+                    .foregroundStyle(Tokens.Colour.textPrimary)
+                if let name = intent.recipientDisplay ?? intent.recipientCode {
+                    Text("to \(name)")
+                        .font(Tokens.Typography.body)
+                        .foregroundStyle(Tokens.Colour.textPrimary)
+                }
             }
+
+            VStack(spacing: Tokens.Spacing.md) {
+                if let reference = intent.txnReference {
+                    HStack {
+                        Text("Reference")
+                            .font(Tokens.Typography.body)
+                            .foregroundStyle(Tokens.Colour.textSecondary)
+                        Spacer()
+                        Text(reference)
+                            .font(Tokens.Typography.body.monospaced())
+                            .foregroundStyle(Tokens.Colour.textPrimary)
+                            .textSelection(.enabled)   // users are asked for this by support
+                        Button {
+                            UIPasteboard.general.string = reference
+                        } label: {
+                            Image(systemName: "doc.on.doc")
+                                .foregroundStyle(Tokens.Colour.brandAccessible)
+                                .frame(width: Tokens.Hit.minimum, height: Tokens.Hit.minimum)
+                        }
+                        .accessibilityLabel("Copy reference")
+                    }
+                }
+                if let when = intent.executedAt {
+                    row("Date", when.formatted(date: .abbreviated, time: .shortened))
+                }
+                if let fee = intent.feeAmount, fee > 0, intent.paymentKind != .withdrawal {
+                    row("Fee", Money.format(fee))
+                }
+                if let balance = Double(receipt["newBalance"] ?? "") {
+                    row("New balance", Money.format(balance))
+                }
+                if let left = Double(receipt["voucherRemaining"] ?? "") {
+                    row("Left on voucher", Money.format(left))
+                }
+            }
+            .padding(Tokens.Spacing.lg)
+            .frame(maxWidth: .infinity)
+            .background(Tokens.Colour.surfaceElevated)
+            .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.card, style: .continuous))
+
             Spacer()
             LHPrimaryButton(title: "Done") { finish() }
         }
         .padding(.bottom, Tokens.Spacing.xl)
+    }
+
+    private func successHeadline(_ intent: PaymentIntent) -> String {
+        switch intent.paymentKind {
+        case .withdrawal: return "Withdrawal requested"
+        case .topUp: return "Top-up sent"
+        default: return "Payment sent"
+        }
+    }
+
+    /// Who is being paid: the business, store, branch or bus by name, what kind of payee it is and
+    /// the code the payer typed — enough to notice "RIO1" when "RI01" was meant.
+    private func payeeCard(name: String, intent: PaymentIntent) -> some View {
+        HStack(spacing: Tokens.Spacing.md) {
+            Text(String(name.prefix(1)).uppercased())
+                .font(Tokens.Typography.headline)
+                .foregroundStyle(Tokens.Colour.navy)
+                .frame(width: 40, height: 40)
+                .background(Tokens.Colour.surfaceMuted)
+                .clipShape(Circle())
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: Tokens.Spacing.xs) {
+                    Text(name)
+                        .font(Tokens.Typography.headline)
+                        .foregroundStyle(Tokens.Colour.textPrimary)
+                        .lineLimit(2)
+                    if intent.isMerchantRecipient {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Tokens.Colour.brand)
+                            .accessibilityLabel("Verified business")
+                    }
+                }
+                if let summary = intent.recipientDisplay != nil ? intent.recipientSummary : nil {
+                    Text(summary)
+                        .font(Tokens.Typography.caption)
+                        .foregroundStyle(Tokens.Colour.textSecondary)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("To \(name)")
     }
 
     private func failureContent(message: String, retryable: Bool) -> some View {

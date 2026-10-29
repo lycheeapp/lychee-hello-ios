@@ -216,6 +216,23 @@ public final class ChatModel {
         pendingIntent = nil
     }
 
+    /// The confirm response. The receipt (or why it failed) goes into the transcript at once, and
+    /// the review card learns how its payment ended — no waiting for a refresh or a realtime hint.
+    public func applySettlement(_ intent: PaymentIntent) {
+        withAnimation(Self.insertAnimation) {
+            for (index, message) in messages.enumerated()
+            where message.type == .paymentReview && message.paymentIntentId == intent.id {
+                messages[index] = message.with(paymentIntent: intent)
+            }
+            for message in intent.messages ?? [] where !messages.contains(where: { $0.id == message.id }) {
+                messages.append(message)
+            }
+        }
+        if resumableIntent?.id == intent.id, intent.status != .pending {
+            resumableIntent = nil
+        }
+    }
+
     // MARK: - Sending
 
     public func send() async {

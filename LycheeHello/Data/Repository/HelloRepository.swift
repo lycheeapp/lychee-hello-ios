@@ -33,6 +33,10 @@ enum HelloRequests {
         let notificationsToken: String
     }
 
+    struct SwitchAccount: Encodable {
+        let accountType: String
+    }
+
     struct SendMessage: Encodable {
         let text: String?
         let form: PaymentForm?
@@ -76,6 +80,9 @@ public protocol HelloRepositoryProtocol: Sendable {
     func walletBalance() async throws -> WalletBalance
     func registerPushToken(_ token: String) async throws
     func logout() async throws
+    /// Moves this device to another account on the same number (person ↔ business). Saves the
+    /// new session token, as sign-in does.
+    func switchAccount(to accountType: String) async throws -> SessionResult
 
     func generalConversation() async throws -> Conversation
     func conversations() async throws -> [Conversation]
@@ -182,6 +189,17 @@ public actor HelloRepository: HelloRepositoryProtocol {
     public func logout() async throws {
         defer { Task { await tokenStore.clear() } }
         try? await api.delete("auth/logout")
+    }
+
+    public func switchAccount(to accountType: String) async throws -> SessionResult {
+        let result: SessionResult = try await api.post(
+            "auth/switch-account",
+            body: HelloRequests.SwitchAccount(accountType: accountType)
+        )
+        if let token = result.authToken {
+            try await tokenStore.save(token)
+        }
+        return result
     }
 
     // MARK: - Chat

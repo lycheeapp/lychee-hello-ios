@@ -33,6 +33,19 @@ public final class SessionCoordinator {
     /// "+" menu offers; the server checks again on every request.
     public private(set) var capabilities = Capabilities()
 
+    /// Every account on this number (sign-in, `/me`). Most numbers have one; a person who also runs
+    /// a business on it has two, and Settings offers a switch.
+    public private(set) var accounts: [Account] = []
+
+    /// The accounts this device could switch to.
+    public var otherAccounts: [Account] { accounts.filter { !$0.current } }
+
+    /// Set once after signing in to a number with two accounts: the app asks which to use, because
+    /// payments come from the account on screen and guessing wrong would spend the wrong money.
+    public var isChoosingAccount = false
+    public private(set) var isSwitchingAccount = false
+    public var accountSwitchError: String?
+
     private let repository: HelloRepositoryProtocol
     private let realtime: RealtimeClient
     private let dedup = RealtimeDeduplicator()
@@ -67,6 +80,7 @@ public final class SessionCoordinator {
     /// After a successful OTP verification.
     public func didAuthenticate(_ result: SessionResult) async {
         user = result.user
+        accounts = result.accounts ?? []
         CrashReporter.setUser(id: result.user?.id)
 
         if result.requiresOnboarding {
@@ -74,12 +88,43 @@ public final class SessionCoordinator {
             return
         }
         await enterSignedIn()
+        isChoosingAccount = accounts.count > 1
     }
 
     /// After onboarding completes.
     public func didCompleteOnboarding(_ updated: HelloUser) async {
         user = updated
         await enterSignedIn()
+        isChoosingAccount = accounts.count > 1
+    }
+
+    /// Moves this device to another account on the same number — from the person to their
+    /// business, or back. Everything account-scoped is re-read: the balance, what "+" offers, and
+    /// the chat (each account has its own thread).
+    public func switchAccount(to account: Account) async {
+        guard !isSwitchingAccount, !account.current else { return }
+        isSwitchingAccount = true
+        defer { isSwitchingAccount = false }
+        do {
+            let result = try await repository.switchAccount(to: account.type)
+            await stopRealtime()
+            user = result.user
+            accounts = result.accounts ?? []
+            balance = nil
+            capabilities = Capabilities()
+            CrashReporter.setUser(id: result.user?.id)
+            if result.requiresOnboarding {
+                route = .onboarding
+            } else {
+                await enterSignedIn()
+            }
+            chatInvalidationToken = UUID()
+        } catch let error as APIError {
+            CrashReporter.recordAPIFailure(endpoint: "auth/switch-account", error: error)
+            accountSwitchError = error.userMessage
+        } catch {
+            accountSwitchError = "Couldn't switch accounts. Please try again."
+        }
     }
 
     public func signOut() async {
@@ -88,6 +133,8 @@ public final class SessionCoordinator {
         user = nil
         balance = nil
         capabilities = Capabilities()
+        accounts = []
+        isChoosingAccount = false
         CrashReporter.setUser(id: nil)
         route = .signedOut
     }
@@ -99,6 +146,7 @@ public final class SessionCoordinator {
             let session = try await repository.currentUser()
             user = session.user
             capabilities = session.capabilities ?? Capabilities()
+            accounts = session.accounts ?? []
             CrashReporter.setUser(id: session.user?.id)
             if session.requiresOnboarding {
                 route = .onboarding
@@ -127,8 +175,12 @@ public final class SessionCoordinator {
     /// The sign-in response carries no capabilities, so they are read from `/me` once signed in.
     /// A failure keeps the last known value: the menu simply offers less until the next launch.
     public func refreshCapabilities() async {
-        if let session = try? await repository.currentUser(), let fresh = session.capabilities {
+        guard let session = try? await repository.currentUser() else { return }
+        if let fresh = session.capabilities {
             capabilities = fresh
+        }
+        if let fresh = session.accounts {
+            accounts = fresh
         }
     }
 
@@ -173,6 +225,7 @@ public final class SessionCoordinator {
         await stopRealtime()
         user = nil
         balance = nil
+        accounts = []
         route = .signedOut
     }
 

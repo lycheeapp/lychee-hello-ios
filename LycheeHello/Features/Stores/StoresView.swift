@@ -130,7 +130,10 @@ struct StoresView: View {
 /// (decision D5 — brand-identical, platform-native).
 struct MainTabView: View {
 
+    @Environment(SessionCoordinator.self) private var coordinator
+
     var body: some View {
+        @Bindable var coordinator = coordinator
         TabView {
             NavigationStack { ChatView() }
                 .tabItem { Label("Chats", systemImage: "bubble.left") }
@@ -142,5 +145,13 @@ struct MainTabView: View {
                 .tabItem { Label("Settings", systemImage: "gearshape") }
         }
         .tint(Tokens.Colour.brand)
+        // Each account has its own thread, balance and menu: switching rebuilds the tabs rather
+        // than letting the chat keep showing the account it left.
+        .id(coordinator.user?.id)
+        // A number with a personal and a business account: ask once, after sign-in, which to use.
+        .sheet(isPresented: $coordinator.isChoosingAccount) {
+            AccountChooserSheet()
+                .presentationDetents([.medium])
+        }
     }
 }

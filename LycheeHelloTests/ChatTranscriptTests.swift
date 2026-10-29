@@ -86,7 +86,9 @@ final class ChatTranscriptTests: XCTestCase {
         XCTAssertEqual(ReplyAction(title: " use a VOUCHER "), .openForm(.voucher))
         XCTAssertEqual(ReplyAction(title: "Balance"), .send("BALANCE"))
         XCTAssertEqual(ReplyAction(title: "Something else"), .send("Something else"))
-        XCTAssertTrue(ReplyAction(title: "Use a voucher").needsPayableWallet)
+        XCTAssertTrue(ReplyAction(title: "Pay from balance").needsPayableWallet)
+        // A voucher pays for itself, so its form opens before the wallet is active.
+        XCTAssertFalse(ReplyAction(title: "Use a voucher").needsPayableWallet)
         XCTAssertFalse(ReplyAction(title: "Balance").needsPayableWallet)
     }
 
@@ -152,6 +154,41 @@ final class ChatTranscriptTests: XCTestCase {
         XCTAssertEqual(PaymentKind(raw: "TOPUP"), .topUp)
         XCTAssertEqual(PaymentKind(raw: "VOUCHER"), .voucher)
         XCTAssertEqual(PaymentKind(raw: "SOMETHING_NEW"), .unknown)
+    }
+
+    // MARK: - Payees and payment outcomes
+
+    func testAPayeeIsDescribedByKindAndCode() {
+        XCTAssertEqual(PaymentRecipient.summary(type: "SERVICE_PROVIDER", category: "TAXI", code: "RIO1"), "Taxi · RIO1")
+        XCTAssertEqual(PaymentRecipient.summary(type: "STORE", category: nil, code: "BRV"), "Store · BRV")
+        XCTAssertEqual(PaymentRecipient.summary(type: "MOBILE_USER", category: nil, code: "****3456"), "Lychee user · ****3456")
+        XCTAssertNil(PaymentRecipient.summary(type: nil, category: nil, code: nil))
+        XCTAssertTrue(PaymentRecipient.isMerchant("REDEMPTION_POINT"))
+        XCTAssertFalse(PaymentRecipient.isMerchant("MOBILE_USER"))
+    }
+
+    /// A review card arrives with its payment as it stands now, so a settled card can say "Paid".
+    func testAReviewCardCarriesItsPaymentFromTheWire() throws {
+        let json = """
+        {"id":"m1","direction":"OUTBOUND","type":"PAYMENT_REVIEW","body":"Review","status":"SENT",
+         "paymentIntentId":"p1",
+         "paymentIntent":{"id":"p1","kind":"TRANSFER","status":"EXECUTED","amount":50,"totalAmount":50,
+           "recipientDisplay":"Rio Taxi","recipientCode":"RIO1","recipientType":"SERVICE_PROVIDER",
+           "recipientCategory":"TAXI","txnReference":"LH-12"}}
+        """
+        let message = try JSONDecoder().decode(ChatMessage.self, from: Data(json.utf8))
+
+        XCTAssertEqual(message.paymentIntent?.status, .executed)
+        XCTAssertEqual(message.paymentIntent?.txnReference, "LH-12")
+        XCTAssertEqual(message.paymentIntent?.recipientSummary, "Taxi · RIO1")
+        XCTAssertEqual(message.paymentIntent?.isMerchantRecipient, true)
+    }
+
+    func testAnAccountSaysWhatKindItIs() {
+        XCTAssertEqual(Account(type: Account.business, name: "Rio Taxi", code: "RIO1", current: false).kindLabel,
+                       "Business account · RIO1")
+        XCTAssertEqual(Account(type: Account.person, name: "Khaled", code: nil, current: true).kindLabel,
+                       "Personal account")
     }
 
     // MARK: - Merge

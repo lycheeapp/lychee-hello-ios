@@ -19,6 +19,13 @@ public struct HelloUser: Decodable, Sendable, Equatable, Identifiable {
     public let phoneNumber: String?
     public let countryCode: String?
     public let profilePictureUrl: String?
+    /// `MOBILE_USER` (a person) or `SERVICE_PROVIDER` (a business).
+    public var accountType: String? = nil
+    /// A business's payee code ("RIO1"); `nil` for a person.
+    public var accountCode: String? = nil
+
+    /// Signed in as a business rather than as a person.
+    public var isBusiness: Bool { accountType == Account.business }
 
     /// Screenshot shows "Talal Raddad" — first + last (decision D6).
     public var resolvedDisplayName: String {
@@ -42,10 +49,43 @@ public struct SessionResult: Decodable, Sendable {
     public let user: HelloUser?
     /// Which WhatsApp commands beyond paying this account may use. Sent by `GET /me` only.
     public var capabilities: Capabilities? = nil
+    /// Every account on this number — the person's own, and a business run on it. More than one
+    /// means the app offers a switch.
+    public var accounts: [Account]? = nil
 
     /// A brand-new user must complete onboarding before the chat is useful (decision D6).
     public var requiresOnboarding: Bool {
         userState == .new || !profileComplete
+    }
+}
+
+/// One account on a phone number: the person, or a business they run on it.
+public struct Account: Decodable, Sendable, Equatable, Hashable, Identifiable {
+    public static let person = "MOBILE_USER"
+    public static let business = "SERVICE_PROVIDER"
+
+    public let type: String
+    public let name: String?
+    /// A business's payee code ("RIO1"); `nil` for a person.
+    public let code: String?
+    /// The account this session is signed in as.
+    public let current: Bool
+
+    public var id: String { type }
+    public var isBusiness: Bool { type == Account.business }
+
+    /// "Personal account" / "Business account · RIO1".
+    public var kindLabel: String {
+        guard isBusiness else { return "Personal account" }
+        if let code, !code.isEmpty { return "Business account · \(code)" }
+        return "Business account"
+    }
+
+    public init(type: String, name: String?, code: String?, current: Bool) {
+        self.type = type
+        self.name = name
+        self.code = code
+        self.current = current
     }
 }
 
@@ -128,6 +168,9 @@ public struct ChatMessage: Decodable, Sendable, Equatable, Identifiable {
     public let status: MessageStatus?
     public let paymentIntentId: String?
     public let sentAt: Date?
+    /// On a review card: the payment as it stands now — paid (with its reference), cancelled or
+    /// expired — so a closed card can say how it ended.
+    public var paymentIntent: PaymentIntent? = nil
 
     public var isFromUser: Bool { direction == .inbound }
 }
@@ -142,7 +185,7 @@ public extension ChatMessage {
     var rendersAsBubble: Bool { type != .system }
 
     func with(status: MessageStatus?) -> ChatMessage {
-        ChatMessage(
+        var copy = ChatMessage(
             id: id,
             direction: direction,
             type: type,
@@ -152,6 +195,15 @@ public extension ChatMessage {
             paymentIntentId: paymentIntentId,
             sentAt: sentAt
         )
+        copy.paymentIntent = paymentIntent
+        return copy
+    }
+
+    /// The same message with its payment brought up to date.
+    func with(paymentIntent: PaymentIntent?) -> ChatMessage {
+        var copy = self
+        copy.paymentIntent = paymentIntent
+        return copy
     }
 
     /// The payload's top-level fields as strings (numbers included), for display only.
@@ -275,9 +327,62 @@ public struct PaymentIntent: Decodable, Sendable, Equatable, Identifiable {
     public let errorCode: String?
     /// The kind of payment, named by the server in the user's language ("Bank withdrawal").
     public var title: String? = nil
+    /// `SERVICE_PROVIDER`, `STORE`, `REDEMPTION_POINT`, `TRANSIT_VEHICLE`, `MOBILE_USER`…
+    public var recipientType: String? = nil
+    /// For a business payee, its line of work: `TAXI`, `BUS_OPERATOR`, `PLAYGROUND`.
+    public var recipientCategory: String? = nil
+    /// When the money moved.
+    public var executedAt: Date? = nil
+    /// Only on the confirm response: the receipt and anything after it, to show at once.
+    public var messages: [ChatMessage]? = nil
+
+    /// "Taxi · RIO1", "Store · BRV2", "Lychee user · ****3456" — what kind of payee, and the code
+    /// the payer typed, under the payee's name.
+    public var recipientSummary: String? {
+        PaymentRecipient.summary(type: recipientType, category: recipientCategory, code: recipientCode)
+    }
+
+    /// A business, store, branch or bus: shown with a verified mark.
+    public var isMerchantRecipient: Bool { PaymentRecipient.isMerchant(recipientType) }
 
     /// What kind of payment this is — it decides how the card and the review sheet read.
     public var paymentKind: PaymentKind { PaymentKind(raw: kind) }
+}
+
+/// How a payee is described under its name. Shared by the review card, the sheet and the receipt.
+public enum PaymentRecipient {
+
+    public static func kindLabel(type: String?, category: String?) -> String? {
+        switch category?.uppercased() {
+        case "TAXI": return "Taxi"
+        case "BUS_OPERATOR": return "Bus operator"
+        case "PLAYGROUND": return "Playground"
+        default: break
+        }
+        switch type?.uppercased() {
+        case "SERVICE_PROVIDER": return "Business"
+        case "STORE": return "Store"
+        case "REDEMPTION_POINT": return "Store branch"
+        case "TRANSIT_VEHICLE": return "Bus"
+        case "MOBILE_USER": return "Lychee user"
+        default: return nil
+        }
+    }
+
+    public static func summary(type: String?, category: String?, code: String?) -> String? {
+        let parts = [kindLabel(type: type, category: category), code].compactMap { value -> String? in
+            guard let value, !value.isEmpty else { return nil }
+            return value
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    public static func isMerchant(_ type: String?) -> Bool {
+        switch type?.uppercased() {
+        case "SERVICE_PROVIDER", "STORE", "REDEMPTION_POINT", "TRANSIT_VEHICLE": return true
+        default: return false
+        }
+    }
 }
 
 /// The payments the WhatsApp channel takes, all reviewed and confirmed the same way.

@@ -29,9 +29,10 @@ struct PaymentFormSheet: View {
 
         var needsVoucher: Bool { self == .voucher }
 
-        /// A suspended wallet cannot pay or withdraw. A top-up is paid from the operator's top-up
-        /// balance, not their wallet, so it is not gated on it — as on WhatsApp.
-        var needsPayableWallet: Bool { self != .topUp }
+        /// Paying from the balance and withdrawing spend the wallet, so they wait for it to be
+        /// active. A voucher pays for itself and a top-up comes from the operator's float: as on
+        /// WhatsApp, neither needs the wallet — someone new to Lychee can pay with a voucher.
+        var needsPayableWallet: Bool { self == .balance || self == .withdraw }
     }
 
     /// What the form asks the server to do.

@@ -22,6 +22,33 @@ struct SettingsView: View {
                         .listRowBackground(Color.clear)
                 }
 
+                if !coordinator.otherAccounts.isEmpty {
+                    Section {
+                        ForEach(coordinator.otherAccounts) { account in
+                            Button {
+                                Task { await coordinator.switchAccount(to: account) }
+                            } label: {
+                                Label {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Switch to \(account.name ?? (account.isBusiness ? "business" : "personal"))")
+                                            .font(Tokens.Typography.body)
+                                            .foregroundStyle(Tokens.Colour.textPrimary)
+                                        Text(account.kindLabel)
+                                            .font(Tokens.Typography.caption)
+                                            .foregroundStyle(Tokens.Colour.textSecondary)
+                                    }
+                                } icon: {
+                                    Image(systemName: "arrow.left.arrow.right").foregroundStyle(Tokens.Colour.navy)
+                                }
+                                .frame(minHeight: Tokens.Hit.minimum)
+                            }
+                            .disabled(coordinator.isSwitchingAccount)
+                        }
+                    } footer: {
+                        Text("Payments come from the account you're signed in as.")
+                    }
+                }
+
                 Section {
                     row("Account & profile", "Personal details and phone number", "person")
                     row("Privacy & security", "Blocked accounts and connected devices", "lock.shield")
@@ -64,6 +91,20 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
         }
         .navigationTitle("Settings")
+        .overlay {
+            if coordinator.isSwitchingAccount {
+                ProgressView("Switching account…")
+                    .padding(Tokens.Spacing.lg)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Tokens.Radius.card))
+            }
+        }
+        .alert("Couldn't switch accounts",
+               isPresented: .init(get: { coordinator.accountSwitchError != nil },
+                                  set: { if !$0 { coordinator.accountSwitchError = nil } })) {
+            Button("OK", role: .cancel) { coordinator.accountSwitchError = nil }
+        } message: {
+            Text(coordinator.accountSwitchError ?? "")
+        }
         .confirmationDialog("Log out of Lychee Hello?",
                             isPresented: $showSignOutConfirm,
                             titleVisibility: .visible) {
@@ -88,7 +129,7 @@ struct SettingsView: View {
                     .font(Tokens.Typography.headline)
                     .foregroundStyle(Tokens.Colour.textOnDark)
                 HStack(spacing: Tokens.Spacing.xs) {
-                    Text("Verified Lychee account")
+                    Text(accountLine)
                         .font(Tokens.Typography.caption)
                         .foregroundStyle(Tokens.Colour.textOnDark.opacity(0.85))
                     Image(systemName: "checkmark.seal.fill")
@@ -105,6 +146,16 @@ struct SettingsView: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// "Verified Lychee account", or which account this is when the number has two.
+    private var accountLine: String {
+        guard let user = coordinator.user else { return "Verified Lychee account" }
+        if user.isBusiness {
+            if let code = user.accountCode, !code.isEmpty { return "Business account · \(code)" }
+            return "Business account"
+        }
+        return coordinator.accounts.count > 1 ? "Personal account" : "Verified Lychee account"
+    }
+
     /// Placeholder destinations. Wired as non-navigating rows rather than dead `NavigationLink`s so
     /// the UI never promises a screen that does not exist.
     private func row(_ title: String, _ subtitle: String, _ systemImage: String) -> some View {
@@ -117,5 +168,85 @@ struct SettingsView: View {
             Image(systemName: systemImage).foregroundStyle(Tokens.Colour.navy)
         }
         .frame(minHeight: Tokens.Hit.minimum)
+    }
+}
+
+/// Asked once, after signing in to a number that has both a personal and a business account:
+/// which one to use. Payments come from the account on screen, so this is not a guess the app
+/// makes for the person. Settings offers the same switch any time.
+struct AccountChooserSheet: View {
+
+    @Environment(SessionCoordinator.self) private var coordinator
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: Tokens.Spacing.lg) {
+                Text("This number has more than one Lychee account. Payments come from the one you choose — you can switch any time in Settings.")
+                    .font(Tokens.Typography.body)
+                    .foregroundStyle(Tokens.Colour.textSecondary)
+
+                VStack(spacing: Tokens.Spacing.sm) {
+                    ForEach(coordinator.accounts) { account in
+                        Button {
+                            choose(account)
+                        } label: {
+                            HStack(spacing: Tokens.Spacing.md) {
+                                Image(systemName: account.isBusiness ? "storefront" : "person")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(Tokens.Colour.navy)
+                                    .frame(width: 40, height: 40)
+                                    .background(Tokens.Colour.surfaceMuted)
+                                    .clipShape(Circle())
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(account.name ?? (account.isBusiness ? "Business" : "Personal"))
+                                        .font(Tokens.Typography.headline)
+                                        .foregroundStyle(Tokens.Colour.textPrimary)
+                                    Text(account.kindLabel)
+                                        .font(Tokens.Typography.caption)
+                                        .foregroundStyle(Tokens.Colour.textSecondary)
+                                }
+                                Spacer()
+                                if account.current {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(Tokens.Colour.brand)
+                                        .accessibilityLabel("Signed in")
+                                }
+                            }
+                            .padding(Tokens.Spacing.md)
+                            .background(Tokens.Colour.surfaceElevated)
+                            .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.card, style: .continuous))
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(coordinator.isSwitchingAccount)
+                    }
+                }
+
+                if coordinator.isSwitchingAccount {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                        Spacer()
+                    }
+                }
+                Spacer()
+            }
+            .padding(Tokens.Spacing.gutter)
+            .background(Tokens.Colour.surface.ignoresSafeArea())
+            .navigationTitle("Which account?")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .interactiveDismissDisabled(coordinator.isSwitchingAccount)
+    }
+
+    private func choose(_ account: Account) {
+        guard !account.current else {
+            coordinator.isChoosingAccount = false
+            return
+        }
+        Task {
+            await coordinator.switchAccount(to: account)
+            coordinator.isChoosingAccount = false
+        }
     }
 }

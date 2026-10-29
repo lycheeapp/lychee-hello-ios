@@ -142,6 +142,7 @@ private final class RecordingRepository: HelloRepositoryProtocol, @unchecked Sen
     func walletBalance() async throws -> WalletBalance { throw APIError.offline }
     func registerPushToken(_ token: String) async throws {}
     func logout() async throws {}
+    func switchAccount(to accountType: String) async throws -> SessionResult { throw APIError.offline }
     func generalConversation() async throws -> Conversation { throw APIError.offline }
     func conversations() async throws -> [Conversation] { [] }
     func messages(conversationId: String, before: String?, limit: Int) async throws -> MessagePage { throw APIError.offline }
