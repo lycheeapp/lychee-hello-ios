@@ -81,6 +81,10 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.lycheeapp.lychee-hello.tests
+        # XcodeGen derives the test host from the target name, but the app's product is
+        # "Lychee Hello" (PRODUCT_NAME above), so the derived path points at a bundle that is never
+        # built and the tests cannot launch.
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Lychee Hello.app/Lychee Hello"
 
 schemes:
   LycheeHello:

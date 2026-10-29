@@ -213,10 +213,10 @@ struct TextBubble: View {
         let body = WhatsAppFormatting.text(message.body ?? "")
         let composed: Text
         if message.type == .error {
-            composed = Text(Image(systemName: "exclamationmark.circle.fill"))
+            // Interpolated rather than added together: `Text + Text` is deprecated in the iOS 26 SDK.
+            let icon: Text = Text(Image(systemName: "exclamationmark.circle.fill"))
                 .foregroundStyle(Tokens.Colour.danger)
-                + Text(" ")
-                + body
+            composed = Text("\(icon) \(body)")
         } else {
             composed = body
         }
