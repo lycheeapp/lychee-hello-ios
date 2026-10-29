@@ -84,9 +84,74 @@ final class ChatTranscriptTests: XCTestCase {
     func testPaymentRepliesOpenFormsAndOthersAreSent() {
         XCTAssertEqual(ReplyAction(title: "Pay from balance"), .openForm(.balance))
         XCTAssertEqual(ReplyAction(title: " use a VOUCHER "), .openForm(.voucher))
-        XCTAssertEqual(ReplyAction(title: "Balance"), .send("Balance"))
+        XCTAssertEqual(ReplyAction(title: "Balance"), .send("BALANCE"))
+        XCTAssertEqual(ReplyAction(title: "Something else"), .send("Something else"))
         XCTAssertTrue(ReplyAction(title: "Use a voucher").needsPayableWallet)
         XCTAssertFalse(ReplyAction(title: "Balance").needsPayableWallet)
+    }
+
+    /// Reply titles arrive in the user's language; the id is what the app acts on.
+    func testReplyIdsWorkWhateverTheTitleSays() {
+        XCTAssertEqual(ReplyAction(reply: QuickReply(title: "الدفع من الرصيد", id: "form:balance")), .openForm(.balance))
+        XCTAssertEqual(ReplyAction(reply: QuickReply(title: "استخدام قسيمة", id: "form:voucher")), .openForm(.voucher))
+        XCTAssertEqual(ReplyAction(reply: QuickReply(title: "الرصيد", id: "cmd:balance")), .send("BALANCE"))
+        XCTAssertEqual(ReplyAction(reply: QuickReply(title: "السحب إلى البنك", id: "form:withdraw")), .openForm(.withdraw))
+        // No id: an older message, matched by its English title.
+        XCTAssertEqual(ReplyAction(reply: QuickReply(title: "Pay from balance", id: nil)), .openForm(.balance))
+        XCTAssertTrue(ReplyAction(reply: QuickReply(title: "x", id: "form:withdraw")).needsPayableWallet)
+    }
+
+    func testQuickReplyIdsAreReadAlongsideTitles() {
+        let message = ChatMessage(
+            id: "m1", direction: .outbound, type: .quickReplies, body: "Help",
+            payload: #"{"quickReplies":["Pay from balance","Balance"],"quickReplyIds":["form:balance","cmd:balance"]}"#,
+            status: .sent, paymentIntentId: nil, sentAt: nil
+        )
+        XCTAssertEqual(message.quickReplyOptions, [
+            QuickReply(title: "Pay from balance", id: "form:balance"),
+            QuickReply(title: "Balance", id: "cmd:balance")
+        ])
+    }
+
+    // MARK: - WhatsApp formatting
+
+    func testWhatsAppMarkersStyleTheirText() {
+        let runs = WhatsAppFormatting.runs("Send *BALANCE* or _anything_ ~else~")
+        XCTAssertEqual(runs, [
+            .init(text: "Send ", style: []),
+            .init(text: "BALANCE", style: .bold),
+            .init(text: " or ", style: []),
+            .init(text: "anything", style: .italic),
+            .init(text: " ", style: []),
+            .init(text: "else", style: .strike)
+        ])
+    }
+
+    /// The Arabic WhatsApp replies use doubled markers.
+    func testDoubledMarkersCountAsOne() {
+        XCTAssertEqual(WhatsAppFormatting.runs("**مثال:** 0599"), [
+            .init(text: "مثال:", style: .bold),
+            .init(text: " 0599", style: [])
+        ])
+    }
+
+    /// A masked number, an amount and a product code are not formatting.
+    func testTextThatIsNotFormattingIsLeftAlone() {
+        XCTAssertEqual(WhatsAppFormatting.runs("from ****1234"), [.init(text: "from ****1234", style: [])])
+        XCTAssertEqual(WhatsAppFormatting.runs("2*3*4"), [.init(text: "2*3*4", style: [])])
+        XCTAssertEqual(WhatsAppFormatting.runs("snake_case_name"), [.init(text: "snake_case_name", style: [])])
+        XCTAssertEqual(WhatsAppFormatting.runs("* not bold *"), [.init(text: "* not bold *", style: [])])
+    }
+
+    func testAStyleNeverSpansLines() {
+        XCTAssertEqual(WhatsAppFormatting.runs("*one\ntwo*"), [.init(text: "*one\ntwo*", style: [])])
+    }
+
+    func testPaymentKindsAreReadFromTheWire() {
+        XCTAssertEqual(PaymentKind(raw: "MTB_REQUEST"), .withdrawal)
+        XCTAssertEqual(PaymentKind(raw: "TOPUP"), .topUp)
+        XCTAssertEqual(PaymentKind(raw: "VOUCHER"), .voucher)
+        XCTAssertEqual(PaymentKind(raw: "SOMETHING_NEW"), .unknown)
     }
 
     // MARK: - Merge

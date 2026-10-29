@@ -158,10 +158,18 @@ struct PaymentReviewSheet: View {
     }
 
     private var title: String {
+        let kind = model.intent.paymentKind
         switch model.phase {
-        case .succeeded: return "Payment complete"
-        case .failed:    return "Payment"
-        default:         return "Review payment"
+        case .succeeded:
+            switch kind {
+            case .withdrawal: return "Withdrawal requested"
+            case .topUp: return "Top-up complete"
+            default: return "Payment complete"
+            }
+        case .failed:
+            return model.intent.title ?? "Payment"
+        default:
+            return PaymentCopy.reviewAction(kind)
         }
     }
 
@@ -182,7 +190,7 @@ struct PaymentReviewSheet: View {
     private var reviewContent: some View {
         VStack(spacing: Tokens.Spacing.xl) {
             summaryCard
-            LHPrimaryButton(title: "Confirm payment") {
+            LHPrimaryButton(title: confirmTitle) {
                 Task { await model.confirm() }
             }
             Text("You'll be asked to confirm with \(BiometricGate.biometryName).")
@@ -193,21 +201,62 @@ struct PaymentReviewSheet: View {
         .padding(.top, Tokens.Spacing.xl)
     }
 
-    private var summaryCard: some View {
-        VStack(spacing: Tokens.Spacing.md) {
-            Text(Money.format(model.intent.totalAmount ?? model.intent.amount))
-                .font(Tokens.Typography.largeTitle)
-                .foregroundStyle(Tokens.Colour.textPrimary)
+    private var confirmTitle: String {
+        switch model.intent.paymentKind {
+        case .withdrawal: return "Confirm withdrawal"
+        case .topUp: return "Confirm top-up"
+        default: return "Confirm payment"
+        }
+    }
 
-            if let recipient = model.intent.recipientDisplay ?? model.intent.recipientCode {
-                row("To", recipient)
+    /// Every figure is the server's. A withdrawal leads with what leaves the wallet and ends with
+    /// what the bank pays out; everything else leads with what the user pays.
+    private var summaryCard: some View {
+        let intent = model.intent
+        return VStack(spacing: Tokens.Spacing.md) {
+            if let label = intent.title {
+                Text(label)
+                    .font(Tokens.Typography.caption)
+                    .foregroundStyle(Tokens.Colour.textSecondary)
             }
-            if let voucher = model.intent.voucherCodeMasked {
-                row("Voucher", voucher)
-            }
-            if let fee = model.intent.feeAmount, fee > 0 {
-                row("Fee", Money.format(fee))
-                row("Amount", Money.format(model.intent.amount))
+
+            switch intent.paymentKind {
+            case .withdrawal:
+                Text(Money.format(intent.amount))
+                    .font(Tokens.Typography.largeTitle)
+                    .foregroundStyle(Tokens.Colour.textPrimary)
+                if let bank = intent.recipientDisplay, !bank.isEmpty {
+                    row("Bank", bank)
+                }
+                if let iban = intent.recipientCode {
+                    row("IBAN", iban)
+                }
+                row("Fee", Money.format(intent.feeAmount ?? 0))
+                row("The bank pays", Money.format(intent.totalAmount ?? intent.amount))
+
+            case .topUp:
+                Text(Money.format(intent.totalAmount ?? intent.amount))
+                    .font(Tokens.Typography.largeTitle)
+                    .foregroundStyle(Tokens.Colour.textPrimary)
+                if let customer = intent.recipientDisplay ?? intent.recipientCode {
+                    row("Customer", customer)
+                }
+
+            default:
+                Text(Money.format(intent.totalAmount ?? intent.amount))
+                    .font(Tokens.Typography.largeTitle)
+                    .foregroundStyle(Tokens.Colour.textPrimary)
+
+                if let recipient = intent.recipientDisplay ?? intent.recipientCode {
+                    row("To", recipient)
+                }
+                if let voucher = intent.voucherCodeMasked {
+                    row("Voucher", voucher)
+                }
+                if let fee = intent.feeAmount, fee > 0 {
+                    row("Fee", Money.format(fee))
+                    row("Amount", Money.format(intent.amount))
+                }
             }
         }
         .padding(Tokens.Spacing.lg)

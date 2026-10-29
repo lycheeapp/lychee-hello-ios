@@ -145,6 +145,8 @@ private struct StubRepository: HelloRepositoryProtocol {
     func messages(conversationId: String, before: String?, limit: Int) async throws -> MessagePage { throw APIError.offline }
     func sendText(conversationId: String, text: String, clientMessageId: String) async throws -> SendMessageResult { throw APIError.offline }
     func sendPaymentForm(conversationId: String, payee: String, voucherCode: String?, amount: Double, clientMessageId: String) async throws -> SendMessageResult { throw APIError.offline }
+    func sendWithdrawalForm(conversationId: String, iban: String, amount: Double?, clientMessageId: String) async throws -> SendMessageResult { throw APIError.offline }
+    func sendTopUpForm(conversationId: String, recipientPhone: String, amount: Double, pin: String, clientMessageId: String) async throws -> SendMessageResult { throw APIError.offline }
     func paymentIntent(id: String) async throws -> PaymentIntent { throw APIError.offline }
     func pendingPaymentIntent() async throws -> PaymentIntent? { nil }
     func confirmPayment(intentId: String, idempotencyKey: String) async throws -> PaymentIntent { throw APIError.offline }

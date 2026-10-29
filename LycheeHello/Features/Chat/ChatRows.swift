@@ -155,22 +155,40 @@ enum ChatRowBuilder {
 
 /// What tapping a reply button does.
 ///
-/// The two payment replies open the guided forms (which compose the same command the server
-/// parses); anything else is sent back as if the user had typed it.
+/// The payment replies open the guided forms (which compose the same command the server parses);
+/// "Balance" sends the WhatsApp command; anything else is sent back as if the user had typed it.
 enum ReplyAction: Equatable {
     case openForm(PaymentFormSheet.Mode)
     case send(String)
+
+    /// Acts on the button's id when the server sent one — titles arrive in the user's language,
+    /// ids do not change — and falls back to the English title for older messages.
+    init(reply: QuickReply) {
+        self = ReplyAction.forId(reply.id) ?? ReplyAction(title: reply.title)
+    }
+
+    private static func forId(_ id: String?) -> ReplyAction? {
+        switch id {
+        case "form:balance":  return .openForm(.balance)
+        case "form:voucher":  return .openForm(.voucher)
+        case "form:withdraw": return .openForm(.withdraw)
+        case "cmd:balance":   return .send("BALANCE")
+        default:              return nil
+        }
+    }
 
     init(title: String) {
         switch title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
         case "pay from balance": self = .openForm(.balance)
         case "use a voucher":    self = .openForm(.voucher)
+        case "withdraw to bank": self = .openForm(.withdraw)
+        case "balance":          self = .send("BALANCE")
         default:                 self = .send(title)
         }
     }
 
     var needsPayableWallet: Bool {
-        if case .openForm = self { return true }
+        if case let .openForm(mode) = self { return mode.needsPayableWallet }
         return false
     }
 }

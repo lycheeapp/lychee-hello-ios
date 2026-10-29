@@ -40,10 +40,36 @@ public struct SessionResult: Decodable, Sendable {
     public let walletStatus: String?
     public let kycStatus: String?
     public let user: HelloUser?
+    /// Which WhatsApp commands beyond paying this account may use. Sent by `GET /me` only.
+    public var capabilities: Capabilities? = nil
 
     /// A brand-new user must complete onboarding before the chat is useful (decision D6).
     public var requiresOnboarding: Bool {
         userState == .new || !profileComplete
+    }
+}
+
+/// The commands beyond paying that this account may use — what the "+" menu offers. Each flag is
+/// the server's answer about the caller only; the app never decides who is an operator.
+public struct Capabilities: Decodable, Sendable, Equatable {
+    /// `<IBAN> [amount]`: withdraw to a bank account.
+    public var withdraw: Bool = false
+    /// `topup <phone> <amount> <pin>`: an operator's balance top-up for a customer.
+    public var topUp: Bool = false
+
+    public init(withdraw: Bool = false, topUp: Bool = false) {
+        self.withdraw = withdraw
+        self.topUp = topUp
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        withdraw = try container.decodeIfPresent(Bool.self, forKey: .withdraw) ?? false
+        topUp = try container.decodeIfPresent(Bool.self, forKey: .topUp) ?? false
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case withdraw, topUp
     }
 }
 
@@ -74,6 +100,8 @@ public enum MessageType: String, Decodable, Sendable {
     case quickReplies = "QUICK_REPLIES"
     case paymentReview = "PAYMENT_REVIEW"
     case paymentReceipt = "PAYMENT_RECEIPT"
+    /// Money that arrived from someone else — WhatsApp's "you received a payment".
+    case paymentReceived = "PAYMENT_RECEIVED"
     case system = "SYSTEM"
     case error = "ERROR"
     case unknown = "UNKNOWN"
@@ -154,6 +182,23 @@ public extension ChatMessage {
         return replies
     }
 
+    /// The reply buttons with their ids. The server sends a stable id next to each title
+    /// (`form:balance`, `cmd:balance`…), as a WhatsApp button reply carries one, so a button works
+    /// whatever language its title is in. Older messages have titles only.
+    var quickReplyOptions: [QuickReply] {
+        let titles = quickReplies
+        guard !titles.isEmpty else { return [] }
+        var ids: [String] = []
+        if let raw = payload?.data(using: .utf8),
+           let object = try? JSONSerialization.jsonObject(with: raw) as? [String: Any],
+           let values = object["quickReplyIds"] as? [String] {
+            ids = values
+        }
+        return titles.enumerated().map { index, title in
+            QuickReply(title: title, id: index < ids.count ? ids[index] : nil)
+        }
+    }
+
     /// Whether the text opens with a right-to-left script (Arabic, Hebrew), judged by its first
     /// letter the way the Unicode bidi algorithm picks a paragraph's direction.
     var isRightToLeft: Bool {
@@ -168,6 +213,12 @@ public extension ChatMessage {
         }
         return false
     }
+}
+
+/// A reply button: what it says, and what it does (`id`, when the server sent one).
+public struct QuickReply: Sendable, Equatable, Hashable {
+    public let title: String
+    public let id: String?
 }
 
 public struct Conversation: Decodable, Sendable, Equatable, Identifiable {
@@ -222,6 +273,33 @@ public struct PaymentIntent: Decodable, Sendable, Equatable, Identifiable {
     public let expiresAt: Date?
     public let txnReference: String?
     public let errorCode: String?
+    /// The kind of payment, named by the server in the user's language ("Bank withdrawal").
+    public var title: String? = nil
+
+    /// What kind of payment this is — it decides how the card and the review sheet read.
+    public var paymentKind: PaymentKind { PaymentKind(raw: kind) }
+}
+
+/// The payments the WhatsApp channel takes, all reviewed and confirmed the same way.
+public enum PaymentKind: Sendable, Equatable {
+    case transfer
+    case voucher
+    /// `<IBAN> [amount]`: money to a bank account. `recipientDisplay` is the bank, `recipientCode`
+    /// the masked IBAN, and `totalAmount` what the bank pays out.
+    case withdrawal
+    /// An operator's top-up for a customer; `recipientDisplay` is the customer's masked number.
+    case topUp
+    case unknown
+
+    public init(raw: String?) {
+        switch raw?.uppercased() {
+        case "TRANSFER": self = .transfer
+        case "VOUCHER": self = .voucher
+        case "MTB_REQUEST": self = .withdrawal
+        case "TOPUP": self = .topUp
+        default: self = .unknown
+        }
+    }
 }
 
 public struct SendMessageResult: Decodable, Sendable {

@@ -29,6 +29,10 @@ public final class SessionCoordinator {
     /// (decision D7 — a wallet can hold funds and still be suspended).
     public var canPay: Bool { balance?.payable ?? false }
 
+    /// The WhatsApp commands beyond paying that this account may use (`GET /me`). Decides what the
+    /// "+" menu offers; the server checks again on every request.
+    public private(set) var capabilities = Capabilities()
+
     private let repository: HelloRepositoryProtocol
     private let realtime: RealtimeClient
     private let dedup = RealtimeDeduplicator()
@@ -83,6 +87,7 @@ public final class SessionCoordinator {
         try? await repository.logout()
         user = nil
         balance = nil
+        capabilities = Capabilities()
         CrashReporter.setUser(id: nil)
         route = .signedOut
     }
@@ -93,6 +98,7 @@ public final class SessionCoordinator {
         do {
             let session = try await repository.currentUser()
             user = session.user
+            capabilities = session.capabilities ?? Capabilities()
             CrashReporter.setUser(id: session.user?.id)
             if session.requiresOnboarding {
                 route = .onboarding
@@ -115,6 +121,15 @@ public final class SessionCoordinator {
         await refreshBalance()
         await startRealtime()
         syncPushTokenWhenAvailable()
+        await refreshCapabilities()
+    }
+
+    /// The sign-in response carries no capabilities, so they are read from `/me` once signed in.
+    /// A failure keeps the last known value: the menu simply offers less until the next launch.
+    public func refreshCapabilities() async {
+        if let session = try? await repository.currentUser(), let fresh = session.capabilities {
+            capabilities = fresh
+        }
     }
 
     /// Registers the real FCM token once it exists.

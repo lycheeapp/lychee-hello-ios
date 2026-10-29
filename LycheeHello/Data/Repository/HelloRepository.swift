@@ -37,11 +37,28 @@ enum HelloRequests {
         let text: String?
         let form: PaymentForm?
         let clientMessageId: String?
+        /// "Withdraw to bank" — the server composes the WhatsApp command `<IBAN> [amount]`.
+        var withdrawal: WithdrawalForm? = nil
+        /// Operator top-up — the server composes `topup <phone> <amount> <pin>`.
+        var topUp: TopUpForm? = nil
 
         struct PaymentForm: Encodable {
             let payee: String
             let voucherCode: String?
             let amount: Double
+        }
+
+        /// A missing amount withdraws the whole available balance, as on WhatsApp.
+        struct WithdrawalForm: Encodable {
+            let iban: String
+            let amount: Double?
+        }
+
+        /// The PIN is checked by the server and redacted before the message is stored.
+        struct TopUpForm: Encodable {
+            let recipientPhone: String
+            let amount: Double
+            let pin: String
         }
     }
 }
@@ -66,6 +83,10 @@ public protocol HelloRepositoryProtocol: Sendable {
     func sendText(conversationId: String, text: String, clientMessageId: String) async throws -> SendMessageResult
     func sendPaymentForm(conversationId: String, payee: String, voucherCode: String?,
                          amount: Double, clientMessageId: String) async throws -> SendMessageResult
+    func sendWithdrawalForm(conversationId: String, iban: String, amount: Double?,
+                            clientMessageId: String) async throws -> SendMessageResult
+    func sendTopUpForm(conversationId: String, recipientPhone: String, amount: Double, pin: String,
+                       clientMessageId: String) async throws -> SendMessageResult
 
     func paymentIntent(id: String) async throws -> PaymentIntent
     /// The payment awaiting confirmation, if any. `nil` is a normal answer, not an error.
@@ -201,6 +222,36 @@ public actor HelloRepository: HelloRepositoryProtocol {
                 text: nil,
                 form: .init(payee: payee, voucherCode: voucherCode, amount: amount),
                 clientMessageId: clientMessageId
+            ),
+            idempotencyKey: clientMessageId
+        )
+    }
+
+    /// "Withdraw to bank" form. The server composes `<IBAN> [amount]` and runs the WhatsApp
+    /// withdrawal flow; nothing is held until the review card is confirmed.
+    public func sendWithdrawalForm(
+        conversationId: String, iban: String, amount: Double?, clientMessageId: String
+    ) async throws -> SendMessageResult {
+        try await api.post(
+            "conversations/\(conversationId)/messages",
+            body: HelloRequests.SendMessage(
+                text: nil, form: nil, clientMessageId: clientMessageId,
+                withdrawal: .init(iban: iban, amount: amount)
+            ),
+            idempotencyKey: clientMessageId
+        )
+    }
+
+    /// Operator top-up form. Only offered when `/me` says the caller is an operator; the server
+    /// checks that again, and the PIN, and never stores the PIN.
+    public func sendTopUpForm(
+        conversationId: String, recipientPhone: String, amount: Double, pin: String, clientMessageId: String
+    ) async throws -> SendMessageResult {
+        try await api.post(
+            "conversations/\(conversationId)/messages",
+            body: HelloRequests.SendMessage(
+                text: nil, form: nil, clientMessageId: clientMessageId,
+                topUp: .init(recipientPhone: recipientPhone, amount: amount, pin: pin)
             ),
             idempotencyKey: clientMessageId
         )

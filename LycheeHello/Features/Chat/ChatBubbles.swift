@@ -209,7 +209,8 @@ struct TextBubble: View {
     }
 
     private var styledText: Text {
-        let body = Text(message.body ?? "")
+        // Lychee's replies are WhatsApp's replies, which use WhatsApp's *bold* and _italic_.
+        let body = WhatsAppFormatting.text(message.body ?? "")
         let composed: Text
         if message.type == .error {
             composed = Text(Image(systemName: "exclamationmark.circle.fill"))
@@ -251,7 +252,7 @@ struct PaymentRequestBubble: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 3) {
-                Label("Payment ready to review", systemImage: "creditcard.fill")
+                Label(PaymentCopy.readyLabel(intent.paymentKind), systemImage: PaymentCopy.icon(intent.paymentKind))
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Tokens.Chat.meta)
 
@@ -264,6 +265,11 @@ struct PaymentRequestBubble: View {
                     Text("to \(recipient)")
                         .font(.subheadline)
                         .foregroundStyle(Tokens.Chat.text)
+                }
+                if intent.paymentKind == .withdrawal, let iban = intent.recipientCode, intent.recipientDisplay != nil {
+                    Text("IBAN \(iban)")
+                        .font(.footnote.monospaced())
+                        .foregroundStyle(Tokens.Chat.meta)
                 }
                 if let masked = intent.voucherCodeMasked {
                     Text("Voucher \(masked)")
@@ -290,7 +296,7 @@ struct PaymentRequestBubble: View {
                 .frame(height: 0.5)
 
             Button(action: onReview) {
-                Text("Review payment")
+                Text(PaymentCopy.reviewAction(intent.paymentKind))
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Tokens.Chat.action)
                     .frame(maxWidth: .infinity, minHeight: Tokens.Hit.minimum)
@@ -333,9 +339,10 @@ struct PaymentReceiptBubble: View {
     var body: some View {
         let fields = message.payloadFields
         let reference = fields["txnReference"].flatMap { $0.isEmpty ? nil : $0 }
+        let kind = PaymentKind(raw: fields["kind"])
 
         VStack(alignment: .leading, spacing: 3) {
-            Label("Payment sent", systemImage: "checkmark.circle.fill")
+            Label(PaymentCopy.doneLabel(kind, stage: fields["stage"]), systemImage: "checkmark.circle.fill")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Tokens.Chat.success)
 
@@ -364,6 +371,28 @@ struct PaymentReceiptBubble: View {
                     Text("\(Money.format(Double(fields["amount"] ?? ""))) + \(Money.format(fee)) fee")
                         .font(.footnote)
                         .foregroundStyle(Tokens.Chat.meta)
+                }
+                if kind == .withdrawal, let iban = fields["recipientCode"], !iban.isEmpty {
+                    Text("IBAN \(iban)")
+                        .font(.footnote.monospaced())
+                        .foregroundStyle(Tokens.Chat.meta)
+                }
+                if let balance = Double(fields["newBalance"] ?? "") {
+                    Text("New balance \(Money.format(balance))")
+                        .font(.footnote)
+                        .foregroundStyle(Tokens.Chat.meta)
+                }
+                if let left = Double(fields["voucherRemaining"] ?? "") {
+                    Text("Left on voucher \(Money.format(left))")
+                        .font(.footnote)
+                        .foregroundStyle(Tokens.Chat.meta)
+                }
+                // A withdrawal's message says when the money will arrive — worth keeping in view.
+                if kind == .withdrawal, let body = message.body, !body.isEmpty {
+                    WhatsAppFormatting.text(body)
+                        .font(.footnote)
+                        .foregroundStyle(Tokens.Chat.text)
+                        .padding(.top, 4)
                 }
             }
 
@@ -398,20 +427,230 @@ struct PaymentReceiptBubble: View {
     }
 }
 
+/// Money that arrived from someone else — WhatsApp's "you received a payment", as a card.
+struct PaymentReceivedBubble: View {
+    let message: ChatMessage
+    let time: String
+    let tail: BubbleTail
+
+    var body: some View {
+        let fields = message.payloadFields
+
+        VStack(alignment: .leading, spacing: 3) {
+            Label("Payment received", systemImage: "arrow.down.circle.fill")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Tokens.Chat.success)
+
+            if let amount = Double(fields["amount"] ?? "") {
+                Text(Money.format(amount))
+                    .font(Tokens.Chat.amount)
+                    .foregroundStyle(Tokens.Chat.text)
+                    .padding(.top, 2)
+                if let from = fields["fromDisplay"], !from.isEmpty {
+                    Text("from \(from)")
+                        .font(.subheadline)
+                        .foregroundStyle(Tokens.Chat.text)
+                }
+                if let balance = Double(fields["newBalance"] ?? "") {
+                    Text("New balance \(Money.format(balance))")
+                        .font(.footnote)
+                        .foregroundStyle(Tokens.Chat.meta)
+                }
+            } else {
+                // Unreadable payload: the body is always written alongside it.
+                WhatsAppFormatting.text(message.body ?? "")
+                    .font(Tokens.Chat.message)
+                    .foregroundStyle(Tokens.Chat.text)
+            }
+
+            HStack {
+                Spacer(minLength: 0)
+                MessageMeta(time: time)
+            }
+            .padding(.top, 2)
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 10)
+        .padding(.bottom, 6)
+        .frame(width: 272, alignment: .leading)
+        .modifier(BubbleBackground(fromUser: false, tail: tail))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// How the payment cards name each kind of payment.
+enum PaymentCopy {
+    static func readyLabel(_ kind: PaymentKind) -> String {
+        switch kind {
+        case .withdrawal: return "Withdrawal ready to review"
+        case .topUp: return "Top-up ready to review"
+        default: return "Payment ready to review"
+        }
+    }
+
+    static func reviewAction(_ kind: PaymentKind) -> String {
+        switch kind {
+        case .withdrawal: return "Review withdrawal"
+        case .topUp: return "Review top-up"
+        default: return "Review payment"
+        }
+    }
+
+    static func doneLabel(_ kind: PaymentKind, stage: String?) -> String {
+        switch kind {
+        case .withdrawal: return stage == "COMPLETED" ? "Withdrawal complete" : "Withdrawal requested"
+        case .topUp: return "Top-up sent"
+        default: return "Payment sent"
+        }
+    }
+
+    static func icon(_ kind: PaymentKind) -> String {
+        switch kind {
+        case .withdrawal: return "building.columns.fill"
+        case .topUp: return "arrow.up.circle.fill"
+        default: return "creditcard.fill"
+        }
+    }
+}
+
+/// WhatsApp's inline formatting — `*bold*`, `_italic_`, `~strikethrough~`, ` ```monospace``` ` —
+/// which Lychee's replies use because they are the WhatsApp replies.
+///
+/// WhatsApp's rules: a marker opens after a space, punctuation or the start of the line and before a
+/// non-space; it closes after a non-space and before a space, punctuation or the end; a style never
+/// spans lines. A doubled marker (`**bold**`) counts as one. Anything that does not form a pair is
+/// shown as typed, so `****1234` stays a masked number.
+enum WhatsAppFormatting {
+
+    struct Style: OptionSet, Hashable {
+        let rawValue: Int
+        static let bold = Style(rawValue: 1)
+        static let italic = Style(rawValue: 2)
+        static let strike = Style(rawValue: 4)
+        static let mono = Style(rawValue: 8)
+    }
+
+    struct Run: Equatable {
+        let text: String
+        let style: Style
+    }
+
+    private static let markers: [Character: Style] = ["*": .bold, "_": .italic, "~": .strike]
+
+    /// The styled text, ready for a bubble. Built as one `AttributedString` rather than by adding
+    /// `Text`s together, which the iOS 26 SDK deprecates; the presentation intents are the ones
+    /// SwiftUI already draws for Markdown, so they follow the bubble's font.
+    static func text(_ source: String) -> Text {
+        Text(attributed(source))
+    }
+
+    static func attributed(_ source: String) -> AttributedString {
+        var result = AttributedString()
+        for run in runs(source) {
+            var piece = AttributedString(run.text)
+            var intent: InlinePresentationIntent = []
+            if run.style.contains(.bold) { intent.insert(.stronglyEmphasized) }
+            if run.style.contains(.italic) { intent.insert(.emphasized) }
+            if run.style.contains(.strike) { intent.insert(.strikethrough) }
+            if run.style.contains(.mono) { intent.insert(.code) }
+            if !intent.isEmpty { piece.inlinePresentationIntent = intent }
+            result.append(piece)
+        }
+        return result
+    }
+
+    /// The source split into styled runs. Separate from `text` so it can be tested.
+    static func runs(_ source: String) -> [Run] {
+        var runs: [Run] = []
+        parse(Array(source), style: [], into: &runs)
+        return runs
+    }
+
+    private static func parse(_ chars: [Character], style: Style, into runs: inout [Run]) {
+        var buffer = ""
+        var i = 0
+        func flush() {
+            if !buffer.isEmpty {
+                runs.append(Run(text: buffer, style: style))
+                buffer = ""
+            }
+        }
+        while i < chars.count {
+            let c = chars[i]
+            if c == "`", let close = monospaceEnd(chars, from: i) {
+                flush()
+                runs.append(Run(text: String(chars[(i + 3)..<close]), style: style.union(.mono)))
+                i = close + 3
+                continue
+            }
+            if let markerStyle = markers[c] {
+                let width = markerWidth(chars, at: i, marker: c)
+                if width > 0, let close = closingIndex(chars, marker: c, width: width, from: i + width) {
+                    flush()
+                    parse(Array(chars[(i + width)..<close]), style: style.union(markerStyle), into: &runs)
+                    i = close + width
+                    continue
+                }
+            }
+            buffer.append(c)
+            i += 1
+        }
+        flush()
+    }
+
+    /// 1 or 2 when a marker opens here, 0 when it does not.
+    private static func markerWidth(_ chars: [Character], at i: Int, marker: Character) -> Int {
+        guard isBoundary(i > 0 ? chars[i - 1] : nil) else { return 0 }
+        let width = (i + 1 < chars.count && chars[i + 1] == marker) ? 2 : 1
+        let after = i + width
+        guard after < chars.count, chars[after] != marker, !chars[after].isWhitespace else { return 0 }
+        return width
+    }
+
+    private static func closingIndex(_ chars: [Character], marker: Character, width: Int, from start: Int) -> Int? {
+        var j = start + 1
+        while j + width <= chars.count {
+            if chars[j] == "\n" { return nil }
+            let matches = (0..<width).allSatisfy { chars[j + $0] == marker }
+            if matches, chars[j - 1] != marker, !chars[j - 1].isWhitespace,
+               isBoundary(j + width < chars.count ? chars[j + width] : nil) {
+                return j
+            }
+            j += 1
+        }
+        return nil
+    }
+
+    private static func monospaceEnd(_ chars: [Character], from i: Int) -> Int? {
+        guard i + 2 < chars.count, chars[i + 1] == "`", chars[i + 2] == "`" else { return nil }
+        var j = i + 4
+        while j + 2 < chars.count {
+            if chars[j] == "`", chars[j + 1] == "`", chars[j + 2] == "`" { return j }
+            j += 1
+        }
+        return nil
+    }
+
+    private static func isBoundary(_ c: Character?) -> Bool {
+        guard let c else { return true }
+        return c.isWhitespace || c.isPunctuation || c.isSymbol
+    }
+}
+
 /// Reply buttons hanging under a bubble, as on WhatsApp business messages.
 struct ReplyButtons: View {
-    let titles: [String]
-    let isEnabled: (String) -> Bool
-    let onTap: (String) -> Void
+    let replies: [QuickReply]
+    let isEnabled: (QuickReply) -> Bool
+    let onTap: (QuickReply) -> Void
 
     var body: some View {
         VStack(spacing: Tokens.Chat.runSpacing) {
-            ForEach(titles, id: \.self) { title in
-                let enabled = isEnabled(title)
+            ForEach(replies, id: \.self) { reply in
+                let enabled = isEnabled(reply)
                 Button {
-                    onTap(title)
+                    onTap(reply)
                 } label: {
-                    Label(title, systemImage: "arrowshape.turn.up.left")
+                    Label(reply.title, systemImage: "arrowshape.turn.up.left")
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(Tokens.Chat.action)
                         .frame(maxWidth: .infinity, minHeight: Tokens.Hit.minimum)

@@ -273,6 +273,43 @@ public final class ChatModel {
     /// Quick-action form path. The server composes the canonical command, so this cannot diverge
     /// from what free text accepts.
     public func sendPaymentForm(payee: String, voucherCode: String?, amount: Double) async {
+        await sendForm(endpoint: "messages(form)", fallback: "Couldn't start that payment.") { repository, conversationId, clientMessageId in
+            try await repository.sendPaymentForm(
+                conversationId: conversationId,
+                payee: payee,
+                voucherCode: voucherCode,
+                amount: amount,
+                clientMessageId: clientMessageId
+            )
+        }
+    }
+
+    /// "Withdraw to bank". The server composes the WhatsApp command `<IBAN> [amount]`; a nil amount
+    /// withdraws the whole available balance. Nothing is held until the review card is confirmed.
+    public func sendWithdrawal(iban: String, amount: Double?) async {
+        await sendForm(endpoint: "messages(withdrawal)", fallback: "Couldn't start that withdrawal.") { repository, conversationId, clientMessageId in
+            try await repository.sendWithdrawalForm(
+                conversationId: conversationId, iban: iban, amount: amount, clientMessageId: clientMessageId)
+        }
+    }
+
+    /// An operator's top-up for a customer. Never drawn optimistically: the message carries the PIN,
+    /// and the server's copy — the only one shown — has it redacted.
+    public func sendTopUp(recipientPhone: String, amount: Double, pin: String) async {
+        await sendForm(endpoint: "messages(topup)", fallback: "Couldn't start that top-up.") { repository, conversationId, clientMessageId in
+            try await repository.sendTopUpForm(
+                conversationId: conversationId, recipientPhone: recipientPhone, amount: amount, pin: pin,
+                clientMessageId: clientMessageId)
+        }
+    }
+
+    /// The shared form path: no optimistic bubble (the user did not type a message), and the
+    /// server's reply — a review card, or the reason it was refused — lands in the transcript.
+    private func sendForm(
+        endpoint: String,
+        fallback: String,
+        _ send: (HelloRepositoryProtocol, String, String) async throws -> SendMessageResult
+    ) async {
         guard let conversationId, !isSending else { return }
         isSending = true
         defer {
@@ -285,19 +322,13 @@ public final class ChatModel {
 
         let clientMessageId = UUID().uuidString
         do {
-            let result = try await repository.sendPaymentForm(
-                conversationId: conversationId,
-                payee: payee,
-                voucherCode: voucherCode,
-                amount: amount,
-                clientMessageId: clientMessageId
-            )
+            let result = try await send(repository, conversationId, clientMessageId)
             apply(result: result, replacing: nil)
         } catch let error as APIError {
-            CrashReporter.recordAPIFailure(endpoint: "messages(form)", error: error)
+            CrashReporter.recordAPIFailure(endpoint: endpoint, error: error)
             errorMessage = error.userMessage
         } catch {
-            errorMessage = "Couldn't start that payment."
+            errorMessage = fallback
         }
     }
 

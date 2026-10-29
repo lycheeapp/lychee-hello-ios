@@ -147,6 +147,8 @@ private final class RecordingRepository: HelloRepositoryProtocol, @unchecked Sen
     func messages(conversationId: String, before: String?, limit: Int) async throws -> MessagePage { throw APIError.offline }
     func sendText(conversationId: String, text: String, clientMessageId: String) async throws -> SendMessageResult { throw APIError.offline }
     func sendPaymentForm(conversationId: String, payee: String, voucherCode: String?, amount: Double, clientMessageId: String) async throws -> SendMessageResult { throw APIError.offline }
+    func sendWithdrawalForm(conversationId: String, iban: String, amount: Double?, clientMessageId: String) async throws -> SendMessageResult { throw APIError.offline }
+    func sendTopUpForm(conversationId: String, recipientPhone: String, amount: Double, pin: String, clientMessageId: String) async throws -> SendMessageResult { throw APIError.offline }
     func paymentIntent(id: String) async throws -> PaymentIntent { intent(status: .confirmed) }
     func pendingPaymentIntent() async throws -> PaymentIntent? { nil }
     func cancelPayment(intentId: String) async throws -> PaymentIntent { intent(status: .cancelled) }

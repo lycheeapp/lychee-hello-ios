@@ -45,8 +45,10 @@ struct ChatView: View {
                         focus: $composerFocused,
                         canSend: model.canSend,
                         canPay: coordinator.canPay,
+                        capabilities: coordinator.capabilities,
                         onSend: { Task { await model.send() } },
-                        onPick: { activeForm = $0 }
+                        onPick: { activeForm = $0 },
+                        onBalance: { Task { await model.send(text: "BALANCE") } }
                     )
                 }
                 .onChange(of: model.lastRowID) { _, newValue in
@@ -93,8 +95,17 @@ struct ChatView: View {
             .presentationDetents([.medium])
         }
         .sheet(item: $activeForm) { mode in
-            PaymentFormSheet(mode: mode) { payee, voucher, amount in
-                Task { await model.sendPaymentForm(payee: payee, voucherCode: voucher, amount: amount) }
+            PaymentFormSheet(mode: mode) { submission in
+                Task {
+                    switch submission {
+                    case let .payment(payee, voucher, amount):
+                        await model.sendPaymentForm(payee: payee, voucherCode: voucher, amount: amount)
+                    case let .withdrawal(iban, amount):
+                        await model.sendWithdrawal(iban: iban, amount: amount)
+                    case let .topUp(phone, amount, pin):
+                        await model.sendTopUp(recipientPhone: phone, amount: amount, pin: pin)
+                    }
+                }
             }
             .presentationDetents([.medium, .large])
         }
@@ -227,14 +238,19 @@ struct ChatView: View {
                 PaymentReceiptBubble(message: message, time: time, tail: tail)
             }
 
+        case .paymentReceived:
+            BubbleRow(fromUser: false) {
+                PaymentReceivedBubble(message: message, time: time, tail: tail)
+            }
+
         case .quickReplies:
             BubbleRow(fromUser: message.isFromUser) {
                 VStack(alignment: .leading, spacing: Tokens.Chat.runSpacing) {
                     TextBubble(message: message, time: time, ticks: row.ticks, tail: tail, fillsWidth: true)
                     ReplyButtons(
-                        titles: message.quickReplies,
-                        isEnabled: { title in
-                            !ReplyAction(title: title).needsPayableWallet || coordinator.canPay
+                        replies: message.quickReplyOptions,
+                        isEnabled: { reply in
+                            !ReplyAction(reply: reply).needsPayableWallet || coordinator.canPay
                         },
                         onTap: { handleReply($0) }
                     )
@@ -265,6 +281,7 @@ struct ChatView: View {
             VStack(alignment: .leading, spacing: 6) {
                 example("payee amount", "from your balance")
                 example("payee voucher amount", "with a voucher")
+                example("BALANCE", "your balance")
             }
             Text("Or tap + for a guided payment.")
                 .font(.footnote)
@@ -293,8 +310,8 @@ struct ChatView: View {
 
     // MARK: - Actions
 
-    private func handleReply(_ title: String) {
-        switch ReplyAction(title: title) {
+    private func handleReply(_ reply: QuickReply) {
+        switch ReplyAction(reply: reply) {
         case let .openForm(mode):
             activeForm = mode
         case let .send(text):

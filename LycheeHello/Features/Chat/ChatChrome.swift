@@ -166,31 +166,55 @@ struct ChatComposer: View {
     let focus: FocusState<Bool>.Binding
     let canSend: Bool
     let canPay: Bool
+    /// What `/me` says this account may do beyond paying.
+    var capabilities = Capabilities()
     let onSend: () -> Void
     let onPick: (PaymentFormSheet.Mode) -> Void
+    /// Sends the WhatsApp `BALANCE` command.
+    var onBalance: () -> Void = {}
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 6) {
             Menu {
+                // A suspended wallet cannot pay or withdraw, so those are disabled rather than
+                // hidden; the balance and an operator's top-up do not depend on it.
                 Button {
                     onPick(.balance)
                 } label: {
                     Label("Pay from balance", systemImage: "wallet.pass")
                 }
+                .disabled(!canPay)
                 Button {
                     onPick(.voucher)
                 } label: {
                     Label("Use a voucher", systemImage: "ticket")
                 }
+                .disabled(!canPay)
+                Button(action: onBalance) {
+                    Label("Check balance", systemImage: "banknote")
+                }
+                if capabilities.withdraw {
+                    Button {
+                        onPick(.withdraw)
+                    } label: {
+                        Label("Withdraw to bank", systemImage: "building.columns")
+                    }
+                    .disabled(!canPay)
+                }
+                if capabilities.topUp {
+                    Button {
+                        onPick(.topUp)
+                    } label: {
+                        Label("Top up a customer", systemImage: "arrow.up.circle")
+                    }
+                }
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 22, weight: .regular))
-                    .foregroundStyle(canPay ? Tokens.Chat.action : Tokens.Chat.tickUnread)
+                    .foregroundStyle(Tokens.Chat.action)
                     .frame(width: 36, height: 36)
                     .contentShape(Rectangle())
             }
-            // A suspended wallet cannot pay; a menu of payments it cannot make is a dead end.
-            .disabled(!canPay)
             .accessibilityLabel("Payment options")
 
             TextField("Message", text: $draft, axis: .vertical)
