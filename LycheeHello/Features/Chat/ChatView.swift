@@ -1,34 +1,83 @@
 import SwiftUI
 
-/// General Chat — screenshot 3.
+/// The General Chat, laid out like a WhatsApp conversation: avatar header, pinned balance,
+/// wallpaper, tailed bubbles with inline time and ticks, day chips, and a "+" composer.
 ///
-/// Deviations from the screenshot, per D5:
-/// - navigation uses a standard `NavigationStack` bar so back-swipe and Dynamic Type work;
-/// - the composer sits above the keyboard via safe-area insets rather than a fixed offset;
-/// - every icon button gets a ≥44pt target.
+/// Smoothness choices, all deliberate:
+/// - the wallpaper is drawn once behind the scroll view, never inside it;
+/// - rows have stable identities (see `ChatModel.rowAliases`), so a sent bubble updates in place;
+/// - only small appends animate — a reload of fifty rows does not;
+/// - the transcript follows new messages only when the user is already at the bottom, or sent the
+///   message themselves; otherwise a scroll-to-latest button appears.
 struct ChatView: View {
+
+    static let bottomID = "chat-bottom"
 
     @Environment(SessionCoordinator.self) private var coordinator
     @State private var model = ChatModel(repository: HelloRepository())
     @State private var balanceHidden = false
-    @State private var showVoucherForm = false
-    @State private var showBalanceForm = false
+    @State private var activeForm: PaymentFormSheet.Mode?
+    @State private var isAtBottom = true
     @FocusState private var composerFocused: Bool
 
     var body: some View {
-        ZStack {
-            Tokens.Colour.surface.ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                balanceCard
-                transcript
-                quickActions
-                composer
+        ScrollViewReader { proxy in
+            transcript(proxy)
+                .overlay(alignment: .bottomTrailing) {
+                    if !isAtBottom {
+                        ScrollToBottomButton { scrollToBottom(proxy, animated: true) }
+                            .padding(.trailing, 6)
+                            .padding(.bottom, 6)
+                            .transition(.scale(scale: 0.6).combined(with: .opacity))
+                    }
+                }
+                .animation(.snappy(duration: 0.2), value: isAtBottom)
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    PinnedBalanceBar(
+                        balance: coordinator.balance,
+                        isHidden: balanceHidden,
+                        onToggleHidden: { balanceHidden.toggle() }
+                    )
+                }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    ChatComposer(
+                        draft: $model.draft,
+                        focus: $composerFocused,
+                        canSend: model.canSend,
+                        canPay: coordinator.canPay,
+                        onSend: { Task { await model.send() } },
+                        onPick: { activeForm = $0 }
+                    )
+                }
+                .onChange(of: model.lastRowID) { _, newValue in
+                    guard newValue != nil else { return }
+                    // Follow the conversation, unless the user has scrolled up to read something —
+                    // then only their own new message pulls them down.
+                    if isAtBottom || model.lastMessageIsFromUser {
+                        scrollToBottom(proxy, animated: true)
+                    }
+                }
+                .onChange(of: composerFocused) { _, focused in
+                    guard focused, isAtBottom else { return }
+                    // Let the keyboard start moving first, then ride up with it.
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(80))
+                        scrollToBottom(proxy, animated: true)
+                    }
+                }
+        }
+        .background { ChatWallpaper().ignoresSafeArea() }
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Tokens.Chat.bar, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbarBackground(Tokens.Chat.bar, for: .tabBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                ChatHeaderTitle(isTyping: model.isSending)
             }
         }
-        .navigationTitle("Lychee Hello")
-        .navigationBarTitleDisplayMode(.inline)
-        .keyboardDoneToolbar()
+        .sensoryFeedback(.impact(weight: .light), trigger: model.sendCount)
         .task { await model.load() }
         // Realtime hints arrive via the coordinator; the chat never talks to SSE directly.
         .onChange(of: coordinator.chatInvalidationToken) { _, _ in
@@ -43,17 +92,11 @@ struct ChatView: View {
             }
             .presentationDetents([.medium])
         }
-        .sheet(isPresented: $showVoucherForm) {
-            PaymentFormSheet(mode: .voucher) { payee, voucher, amount in
+        .sheet(item: $activeForm) { mode in
+            PaymentFormSheet(mode: mode) { payee, voucher, amount in
                 Task { await model.sendPaymentForm(payee: payee, voucherCode: voucher, amount: amount) }
             }
-            .presentationDetents([.medium])
-        }
-        .sheet(isPresented: $showBalanceForm) {
-            PaymentFormSheet(mode: .balance) { payee, _, amount in
-                Task { await model.sendPaymentForm(payee: payee, voucherCode: nil, amount: amount) }
-            }
-            .presentationDetents([.medium])
+            .presentationDetents([.medium, .large])
         }
         .alert("Something went wrong",
                isPresented: .init(get: { model.errorMessage != nil },
@@ -64,308 +107,219 @@ struct ChatView: View {
         }
     }
 
-    private var balanceCard: some View {
-        LHBalanceCard(
-            amount: coordinator.balance?.amount,
-            isHidden: balanceHidden,
-            isPayable: coordinator.canPay,
-            onToggleHidden: { balanceHidden.toggle() }
-        )
-        .padding(.horizontal, Tokens.Spacing.gutter)
-        .padding(.vertical, Tokens.Spacing.md)
+    // MARK: - Transcript
+
+    private func transcript(_ proxy: ScrollViewProxy) -> some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                header(proxy)
+
+                ForEach(ChatRowBuilder.rows(for: model.messages, aliases: model.rowAliases)) { row in
+                    rowView(row)
+                        .padding(.top, topSpacing(for: row))
+                        .id(row.id)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .bottom).combined(with: .opacity),
+                            removal: .opacity
+                        ))
+                }
+
+                // Bottom sentinel: scroll target, and the "is the user at the bottom" probe.
+                Color.clear
+                    .frame(height: 1)
+                    .id(Self.bottomID)
+                    .onGeometryChange(for: Bool.self) { geometry in
+                        guard let visible = geometry.bounds(of: .scrollView) else { return true }
+                        return geometry.frame(in: .scrollView).minY <= visible.height + 120
+                    } action: { atBottom in
+                        isAtBottom = atBottom
+                    }
+            }
+            .padding(.bottom, 8)
+        }
+        .defaultScrollAnchor(.bottom)
+        .scrollDismissesKeyboard(.interactively)
     }
 
-    private var transcript: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: Tokens.Spacing.md) {
-                    if model.isLoading && model.messages.isEmpty {
-                        ProgressView().padding(.top, Tokens.Spacing.xxl)
-                    }
-                    if !model.isLoading && model.messages.isEmpty {
-                        emptyState
-                    }
-                    ForEach(model.messages) { message in
-                        messageRow(message).id(message.id)
+    @ViewBuilder
+    private func header(_ proxy: ScrollViewProxy) -> some View {
+        if model.hasOlder {
+            Button {
+                loadOlder(proxy)
+            } label: {
+                Group {
+                    if model.isLoadingOlder {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Text("Load earlier messages")
                     }
                 }
-                .padding(.horizontal, Tokens.Spacing.gutter)
-                .padding(.vertical, Tokens.Spacing.md)
+                .font(Tokens.Chat.chip)
+                .foregroundStyle(Tokens.Chat.action)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Capsule().fill(Tokens.Chat.dateChip))
             }
-            // Swiping the transcript closes the keyboard — the gesture people reach for in a
-            // messaging app.
-            .scrollDismissesKeyboard(.interactively)
-            .onChange(of: model.messages.count) { _, _ in
-                guard let last = model.messages.last else { return }
-                withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
-            }
+            .buttonStyle(.plain)
+            .padding(.top, 10)
+            .frame(maxWidth: .infinity)
+        } else if !model.isLoading || !model.messages.isEmpty {
+            // The top of the conversation, like WhatsApp's encryption notice.
+            NoticePill(Text("\(Image(systemName: "lock.fill")) Payments in this chat only go through after you review and confirm them."))
+                .padding(.top, 10)
+        }
+
+        if model.isLoading && model.messages.isEmpty {
+            ProgressView()
+                .padding(.top, 40)
+                .frame(maxWidth: .infinity)
+        } else if !model.isLoading && model.messages.isEmpty {
+            emptyState
+        }
+    }
+
+    private func topSpacing(for row: ChatRow) -> CGFloat {
+        switch row.kind {
+        case .day:
+            return 10
+        case .message:
+            return row.isFirstInRun ? Tokens.Chat.groupSpacing : Tokens.Chat.runSpacing
         }
     }
 
     @ViewBuilder
-    private func messageRow(_ message: ChatMessage) -> some View {
+    private func rowView(_ row: ChatRow) -> some View {
+        switch row.kind {
+        case let .day(label):
+            DayChip(label: label)
+                .padding(.vertical, 2)
+        case let .message(message):
+            messageView(message, row: row)
+        }
+    }
+
+    @ViewBuilder
+    private func messageView(_ message: ChatMessage, row: ChatRow) -> some View {
+        let time = ChatRowBuilder.time(for: message)
+        let tail: BubbleTail = row.isLastInRun ? (message.isFromUser ? .trailing : .leading) : .none
+
         switch message.type {
+        case .system:
+            NoticePill(message.body ?? "")
+
         case .paymentReview:
-            // Rendered from the authoritative intent, matched by public id — never from the
-            // message payload, which is display text only.
-            //
-            // `resumableIntent` is what makes a backed-out payment recoverable: it survives an app
-            // restart, so the card reappears in the transcript and can be tapped to re-open the
-            // sheet. Previously this only checked `pendingIntent`, which is nil after dismissal,
-            // leaving the intent blocking new payments with no way to reach it.
-            if let intent = model.resumableIntent, intent.id == message.paymentIntentId {
-                LHPaymentReviewCard(intent: intent) { model.resumePendingPayment() }
-            } else {
-                // Settled, cancelled or expired — the receipt or notice below carries the outcome.
-                LHChatBubble(message: message)
+            BubbleRow(fromUser: false) {
+                // Rendered from the authoritative intent, matched by public id — never from the
+                // message payload. `resumableIntent` survives an app restart, so a backed-out
+                // payment can be reopened from its card.
+                if let intent = model.resumableIntent, intent.id == message.paymentIntentId {
+                    PaymentRequestBubble(intent: intent, time: time, tail: tail) {
+                        model.resumePendingPayment()
+                    }
+                } else {
+                    // Settled, cancelled or expired — the receipt or notice below says which.
+                    ClosedPaymentRequestBubble(time: time, tail: tail)
+                }
             }
 
         case .paymentReceipt:
-            LHPaymentReceiptCard(message: message)
-        case .system, .error:
-            noticeRow(message)
-        default:
-            LHChatBubble(message: message)
-        }
-    }
+            BubbleRow(fromUser: false) {
+                PaymentReceiptBubble(message: message, time: time, tail: tail)
+            }
 
-    private func noticeRow(_ message: ChatMessage) -> some View {
-        Text(message.body ?? "")
-            .font(Tokens.Typography.caption)
-            .foregroundStyle(Tokens.Colour.textSecondary)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(Tokens.Spacing.md)
-            .background(Tokens.Colour.surfaceMuted)
-            .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.field))
+        case .quickReplies:
+            BubbleRow(fromUser: message.isFromUser) {
+                VStack(alignment: .leading, spacing: Tokens.Chat.runSpacing) {
+                    TextBubble(message: message, time: time, ticks: row.ticks, tail: tail, fillsWidth: true)
+                    ReplyButtons(
+                        titles: message.quickReplies,
+                        isEnabled: { title in
+                            !ReplyAction(title: title).needsPayableWallet || coordinator.canPay
+                        },
+                        onTap: { handleReply($0) }
+                    )
+                }
+            }
+
+        default:
+            BubbleRow(fromUser: message.isFromUser) {
+                HStack(spacing: 4) {
+                    if row.ticks == .failed {
+                        RetryButton { Task { await model.retry(messageId: message.id) } }
+                    }
+                    TextBubble(message: message, time: time, ticks: row.ticks, tail: tail)
+                }
+            }
+        }
     }
 
     private var emptyState: some View {
-        VStack(spacing: Tokens.Spacing.md) {
-            LycheeMark(size: 48)
+        VStack(spacing: 10) {
+            ChatAvatar(size: 64)
             Text("Hi \(coordinator.user?.firstName ?? "there") 👋")
-                .font(Tokens.Typography.title)
-                .foregroundStyle(Tokens.Colour.textPrimary)
-            Text("Send a payment as \"payee amount\", or use a quick action below.")
-                .font(Tokens.Typography.body)
-                .foregroundStyle(Tokens.Colour.textSecondary)
-                .multilineTextAlignment(.center)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Tokens.Chat.text)
+            Text("Pay anyone by sending a message:")
+                .font(.subheadline)
+                .foregroundStyle(Tokens.Chat.meta)
+            VStack(alignment: .leading, spacing: 6) {
+                example("payee amount", "from your balance")
+                example("payee voucher amount", "with a voucher")
+            }
+            Text("Or tap + for a guided payment.")
+                .font(.footnote)
+                .foregroundStyle(Tokens.Chat.meta)
         }
-        .padding(.top, Tokens.Spacing.xxl)
-        .padding(.horizontal, Tokens.Spacing.xl)
-    }
-
-    private var quickActions: some View {
-        HStack(spacing: Tokens.Spacing.md) {
-            LHQuickActionChip(title: "Pay from balance", systemImage: "wallet.pass") {
-                showBalanceForm = true
-            }
-            LHQuickActionChip(title: "Use a voucher", systemImage: "tag") {
-                showVoucherForm = true
-            }
-        }
-        .padding(.horizontal, Tokens.Spacing.gutter)
-        .padding(.bottom, Tokens.Spacing.sm)
-        // A suspended wallet cannot pay; disabling avoids leading the user into a dead end.
-        .disabled(!coordinator.canPay)
-        .opacity(coordinator.canPay ? 1 : 0.5)
-    }
-
-    private var composer: some View {
-        HStack(spacing: Tokens.Spacing.md) {
-            TextField("Type a message", text: $model.draft, axis: .vertical)
-                .lineLimit(1...4)
-                .font(Tokens.Typography.body)
-                .focused($composerFocused)
-                .padding(.horizontal, Tokens.Spacing.lg)
-                .padding(.vertical, Tokens.Spacing.md)
-                .background(Tokens.Colour.surfaceElevated)
-                .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.pill))
-                .accessibilityLabel("Message")
-
-            Button {
-                Task { await model.send() }
-            } label: {
-                Image(systemName: "paperplane.fill")
-                    .foregroundStyle(Tokens.Colour.textOnBrand)
-                    .frame(width: Tokens.Hit.minimum, height: Tokens.Hit.minimum)
-                    .background(model.canSend ? Tokens.Colour.brand : Tokens.Colour.brand.opacity(0.4))
-                    .clipShape(Circle())
-            }
-            .disabled(!model.canSend)
-            .accessibilityLabel("Send")
-        }
-        .padding(.horizontal, Tokens.Spacing.gutter)
-        .padding(.vertical, Tokens.Spacing.md)
-        .background(Tokens.Colour.surface)
-    }
-}
-
-/// The in-thread receipt for a settled payment.
-///
-/// This is the user's permanent record and the reference support will ask for, so the transaction
-/// id is selectable rather than merely displayed.
-struct LHPaymentReceiptCard: View {
-
-    let message: ChatMessage
-
-    private var payload: [String: String] {
-        guard let raw = message.payload?.data(using: .utf8),
-              let object = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] else {
-            return [:]
-        }
-        var flat: [String: String] = [:]
-        for (key, value) in object {
-            if let value = value as? String { flat[key] = value }
-            else if let value = value as? NSNumber { flat[key] = value.stringValue }
-        }
-        return flat
-    }
-
-    var body: some View {
-        let fields = payload
-        return VStack(alignment: .leading, spacing: Tokens.Spacing.md) {
-            HStack(spacing: Tokens.Spacing.sm) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(Tokens.Colour.brand)
-                Text("Payment complete")
-                    .font(Tokens.Typography.headline)
-                    .foregroundStyle(Tokens.Colour.textPrimary)
-            }
-
-            Divider().background(Tokens.Colour.divider)
-
-            if let recipient = fields["recipientDisplay"], !recipient.isEmpty {
-                row("To", recipient)
-            }
-            if let voucher = fields["voucherCodeMasked"], !voucher.isEmpty {
-                row("Voucher", voucher)
-            }
-            row("Amount", Money.format(Double(fields["totalAmount"] ?? fields["amount"] ?? "")))
-
-            if let reference = fields["txnReference"], !reference.isEmpty {
-                HStack {
-                    Text("Reference")
-                        .font(Tokens.Typography.caption)
-                        .foregroundStyle(Tokens.Colour.textSecondary)
-                    Spacer()
-                    Text(reference)
-                        .font(Tokens.Typography.caption.monospaced())
-                        .foregroundStyle(Tokens.Colour.textPrimary)
-                        .textSelection(.enabled)
-                }
-            }
-        }
-        .padding(Tokens.Spacing.lg)
-        .background(Tokens.Colour.surfaceElevated)
-        .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.card, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: Tokens.Radius.card, style: .continuous)
-                .stroke(Tokens.Colour.brand.opacity(0.35), lineWidth: 1)
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.92))
         )
-        .accessibilityElement(children: .combine)
+        .padding(.horizontal, 32)
+        .padding(.top, 32)
     }
 
-    private func row(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(Tokens.Typography.body)
-                .foregroundStyle(Tokens.Colour.textSecondary)
-            Spacer()
-            Text(value)
-                .font(Tokens.Typography.body)
-                .foregroundStyle(Tokens.Colour.textPrimary)
+    private func example(_ command: String, _ meaning: String) -> some View {
+        HStack(spacing: 8) {
+            Text(command)
+                .font(.callout.monospaced())
+                .foregroundStyle(Tokens.Chat.text)
+            Text(meaning)
+                .font(.footnote)
+                .foregroundStyle(Tokens.Chat.meta)
         }
     }
-}
 
-/// Structured payment form for both quick actions.
-///
-/// One view with a mode rather than two near-identical sheets: the only difference is whether a
-/// voucher field appears, and duplicating the payee/amount handling is how the two would drift.
-/// Either way the server composes the canonical command, so both share the free-text grammar.
-struct PaymentFormSheet: View {
+    // MARK: - Actions
 
-    enum Mode {
-        case balance
-        case voucher
+    private func handleReply(_ title: String) {
+        switch ReplyAction(title: title) {
+        case let .openForm(mode):
+            activeForm = mode
+        case let .send(text):
+            Task { await model.send(text: text) }
+        }
+    }
 
-        var title: String {
-            switch self {
-            case .balance: return "Pay from balance"
-            case .voucher: return "Use a voucher"
+    private func loadOlder(_ proxy: ScrollViewProxy) {
+        // Keep the message the user was looking at in place once older ones are inserted above.
+        let anchor = model.messages.first.map { model.rowID(for: $0) }
+        Task {
+            await model.loadOlder()
+            if let anchor {
+                proxy.scrollTo(anchor, anchor: .top)
             }
         }
-
-        var needsVoucher: Bool { self == .voucher }
     }
 
-    @Environment(\.dismiss) private var dismiss
-    @State private var payee = ""
-    @State private var voucherCode = ""
-    @State private var amountText = ""
-
-    let mode: Mode
-    let onSubmit: (String, String?, Double) -> Void
-
-    /// Voucher codes are 6 characters (decision U1).
-    private let voucherLength = 6
-
-    private var amount: Double? { Double(amountText.replacingOccurrences(of: ",", with: ".")) }
-
-    private var canSubmit: Bool {
-        let hasPayee = !payee.trimmingCharacters(in: .whitespaces).isEmpty
-        let hasVoucher = !mode.needsVoucher || voucherCode.count == voucherLength
-        return hasPayee && hasVoucher && (amount ?? 0) > 0
-    }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Pay to") {
-                    TextField("Payee code or phone number", text: $payee)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.characters)
-                }
-                if mode.needsVoucher {
-                    Section("Voucher") {
-                        TextField("\(voucherLength)-character code", text: $voucherCode)
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.characters)
-                            .onChange(of: voucherCode) { _, value in
-                                voucherCode = String(value.prefix(voucherLength))
-                            }
-                    }
-                }
-                Section("Amount") {
-                    HStack {
-                        Text(Money.symbol).foregroundStyle(Tokens.Colour.textSecondary)
-                        TextField("0", text: $amountText).keyboardType(.decimalPad)
-                    }
-                }
+    private func scrollToBottom(_ proxy: ScrollViewProxy, animated: Bool) {
+        if animated {
+            withAnimation(.snappy(duration: 0.3)) {
+                proxy.scrollTo(Self.bottomID, anchor: .bottom)
             }
-            .navigationTitle(mode.title)
-            .navigationBarTitleDisplayMode(.inline)
-            // The amount field uses decimalPad — no return key, so it needs an explicit escape.
-            .keyboardDoneToolbar()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Continue") {
-                        if let amount {
-                            onSubmit(
-                                payee.trimmingCharacters(in: .whitespaces),
-                                mode.needsVoucher ? voucherCode : nil,
-                                amount
-                            )
-                        }
-                        dismiss()
-                    }
-                    .disabled(!canSubmit)
-                }
-            }
+        } else {
+            proxy.scrollTo(Self.bottomID, anchor: .bottom)
         }
     }
 }

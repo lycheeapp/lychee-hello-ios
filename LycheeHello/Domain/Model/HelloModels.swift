@@ -104,6 +104,72 @@ public struct ChatMessage: Decodable, Sendable, Equatable, Identifiable {
     public var isFromUser: Bool { direction == .inbound }
 }
 
+public extension ChatMessage {
+
+    /// A bubble drawn locally that the server has not acknowledged yet. Server rows always carry a
+    /// status, so a missing one can only be ours.
+    var isPending: Bool { isFromUser && status == nil }
+
+    /// Everything except in-thread notices sits in a bubble.
+    var rendersAsBubble: Bool { type != .system }
+
+    func with(status: MessageStatus?) -> ChatMessage {
+        ChatMessage(
+            id: id,
+            direction: direction,
+            type: type,
+            body: body,
+            payload: payload,
+            status: status,
+            paymentIntentId: paymentIntentId,
+            sentAt: sentAt
+        )
+    }
+
+    /// The payload's top-level fields as strings (numbers included), for display only.
+    var payloadFields: [String: String] {
+        guard let raw = payload?.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: raw) as? [String: Any] else {
+            return [:]
+        }
+        var flat: [String: String] = [:]
+        for (key, value) in object {
+            if let value = value as? String {
+                flat[key] = value
+            } else if let value = value as? NSNumber {
+                flat[key] = value.stringValue
+            }
+        }
+        return flat
+    }
+
+    /// Reply buttons attached to a `QUICK_REPLIES` message.
+    var quickReplies: [String] {
+        guard type == .quickReplies,
+              let raw = payload?.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: raw) as? [String: Any],
+              let replies = object["quickReplies"] as? [String] else {
+            return []
+        }
+        return replies
+    }
+
+    /// Whether the text opens with a right-to-left script (Arabic, Hebrew), judged by its first
+    /// letter the way the Unicode bidi algorithm picks a paragraph's direction.
+    var isRightToLeft: Bool {
+        guard let body else { return false }
+        for scalar in body.unicodeScalars {
+            switch scalar.value {
+            case 0x0590...0x08FF, 0xFB1D...0xFDFF, 0xFE70...0xFEFF:
+                return true
+            default:
+                if scalar.properties.isAlphabetic { return false }
+            }
+        }
+        return false
+    }
+}
+
 public struct Conversation: Decodable, Sendable, Equatable, Identifiable {
     public let id: String
     public let kind: String?
