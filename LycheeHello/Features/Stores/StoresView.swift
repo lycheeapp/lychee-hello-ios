@@ -269,7 +269,7 @@ struct PayeeNameLine: View {
     }
 }
 
-/// Bottom navigation — Chats / Stores / Settings.
+/// Bottom navigation — Chats / Stores / Cards / Settings (no Cards for a business).
 ///
 /// A standard `TabView` rather than the screenshot's floating pill: it gives the correct safe-area
 /// behaviour, VoiceOver tab semantics and Dynamic Type for free, and matches what iOS users expect
@@ -299,7 +299,7 @@ struct MainTabView: View {
 /// Pay sheet hands it over, and the Chats tab shows the review card.
 private struct MainTabs: View {
 
-    enum Tab: Hashable { case chats, stores, settings }
+    enum Tab: Hashable { case chats, stores, cards, settings }
 
     @Environment(SessionCoordinator.self) private var coordinator
     @State private var chatModel = ChatModel(repository: HelloRepository())
@@ -315,6 +315,13 @@ private struct MainTabs: View {
             NavigationStack { StoresView(onPay: { paying = $0 }) }
                 .tabItem { Label(L("tab_stores"), systemImage: "bag") }
                 .tag(Tab.stores)
+
+            // A business is paid at its POS rather than paying at one: it has no cards.
+            if coordinator.user?.isBusiness != true {
+                NavigationStack { CardsView() }
+                    .tabItem { Label(L("tab_cards"), systemImage: "creditcard") }
+                    .tag(Tab.cards)
+            }
 
             NavigationStack { SettingsView(onPay: { paying = $0 }) }
                 .tabItem { Label(L("tab_settings"), systemImage: "gearshape") }

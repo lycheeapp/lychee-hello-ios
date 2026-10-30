@@ -394,6 +394,8 @@ public enum PaymentKind: Sendable, Equatable {
     case withdrawal
     /// An operator's top-up for a customer; `recipientDisplay` is the customer's masked number.
     case topUp
+    /// Paid at a Lychee POS from the Cards tab, by holding the phone near its Tap to pay screen.
+    case tap
     case unknown
 
     public init(raw: String?) {
@@ -402,6 +404,7 @@ public enum PaymentKind: Sendable, Equatable {
         case "VOUCHER": self = .voucher
         case "MTB_REQUEST": self = .withdrawal
         case "TOPUP": self = .topUp
+        case "TAP": self = .tap
         default: self = .unknown
         }
     }

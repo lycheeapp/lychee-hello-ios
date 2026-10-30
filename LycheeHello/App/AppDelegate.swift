@@ -57,15 +57,18 @@ extension AppDelegate: MessagingDelegate {
 
 extension AppDelegate: UNUserNotificationCenterDelegate {
 
-    /// Foreground presentation.
+    /// Foreground presentation, the way WhatsApp does it.
     ///
-    /// Banners are suppressed while the app is open: SSE already delivered the event and the UI has
-    /// updated, so a push would duplicate what the user is looking at.
+    /// Looking at the chat, the message is already on screen (SSE delivered it), so only the sound
+    /// plays. Anywhere else in the app — Stores, Cards, Settings — the banner shows too, so a
+    /// payment received is never missed. Either way the balance and the chat are refetched: the
+    /// push may be the first the app hears of it when the realtime stream was down.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        []
+        await SessionCoordinator.shared.refreshAfterPush()
+        return await MainActor.run { ChatVisibility.isShowing } ? [.sound, .list] : [.banner, .list, .sound]
     }
 
     /// Tapping a push must **fetch**, never trust the payload.
@@ -79,6 +82,12 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         CrashReporter.log("push opened")
         await SessionCoordinator.shared.refreshAfterPush()
     }
+}
+
+/// Whether the chat is on screen, so a push that arrives while it is can stay quiet.
+@MainActor
+enum ChatVisibility {
+    static var isShowing = false
 }
 
 /// Async box for the FCM token, so callers can await it rather than poll.

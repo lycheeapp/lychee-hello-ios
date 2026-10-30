@@ -8,22 +8,24 @@ import SwiftUI
 struct LycheeMark: View {
 
     var size: CGFloat = 56
+    /// The brand green; white on a coloured card.
+    var color: Color = Tokens.Colour.brand
 
     var body: some View {
         // Proportions expressed as fractions of `size` so the mark scales cleanly.
         ZStack {
             Circle()
-                .fill(Tokens.Colour.brand)
+                .fill(color)
                 .frame(width: size * 0.44, height: size * 0.44)
                 .offset(x: size * 0.16, y: -size * 0.24)
 
             Circle()
-                .fill(Tokens.Colour.brand)
+                .fill(color)
                 .frame(width: size * 0.40, height: size * 0.40)
                 .offset(x: size * 0.20, y: size * 0.26)
 
             Circle()
-                .fill(Tokens.Colour.brand)
+                .fill(color)
                 .frame(width: size * 0.28, height: size * 0.28)
                 .offset(x: -size * 0.24, y: size * 0.12)
         }

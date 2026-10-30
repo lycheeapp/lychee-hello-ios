@@ -37,6 +37,18 @@ enum HelloRequests {
         let accountType: String
     }
 
+    struct CreateOnePay: Encodable {
+        let amount: Double
+        /// The user ticked the terms and the expiry date.
+        let acceptedTerms: Bool
+    }
+
+    struct TapPay: Encodable {
+        /// The tag URL's `p` parameter, verbatim.
+        let payload: String
+        let cardId: String
+    }
+
     struct SendMessage: Encodable {
         let text: String?
         let form: PaymentForm?
@@ -106,6 +118,22 @@ public protocol HelloRepositoryProtocol: Sendable {
     func lookupPayee(_ payee: String) async throws -> PayeeLookup
     func recentPayees() async throws -> [RecentPayee]
     func paymentHistory(query: String?, before: Int64?) async throws -> HistoryPage
+
+    // Cards: the balance and vouchers, a new OnePay voucher, paying a POS's tap-to-pay tag.
+    func wallet() async throws -> Wallet
+    func onePaySettings() async throws -> OnePaySettings
+    func createOnePay(amount: Double, acceptedTerms: Bool) async throws -> Wallet
+    func tapPreview(payload: String) async throws -> TapPreview
+    func tapPay(payload: String, cardId: String) async throws -> TapReceipt
+}
+
+/// Defaults so a test double that has nothing to do with cards need not stub them.
+public extension HelloRepositoryProtocol {
+    func wallet() async throws -> Wallet { throw APIError.transport("not supported") }
+    func onePaySettings() async throws -> OnePaySettings { throw APIError.transport("not supported") }
+    func createOnePay(amount: Double, acceptedTerms: Bool) async throws -> Wallet { throw APIError.transport("not supported") }
+    func tapPreview(payload: String) async throws -> TapPreview { throw APIError.transport("not supported") }
+    func tapPay(payload: String, cardId: String) async throws -> TapReceipt { throw APIError.transport("not supported") }
 }
 
 public actor HelloRepository: HelloRepositoryProtocol {
@@ -389,5 +417,29 @@ public struct DeviceInfoProvider: DeviceInfoProviding {
         ]
         SecItemDelete(query as CFDictionary)
         SecItemAdd(query as CFDictionary, nil)
+    }
+
+    // MARK: - Cards
+
+    public func wallet() async throws -> Wallet {
+        try await api.get("wallet")
+    }
+
+    public func onePaySettings() async throws -> OnePaySettings {
+        try await api.get("wallet/onepay/settings")
+    }
+
+    public func createOnePay(amount: Double, acceptedTerms: Bool) async throws -> Wallet {
+        try await api.post("wallet/onepay", body: HelloRequests.CreateOnePay(amount: amount, acceptedTerms: acceptedTerms))
+    }
+
+    /// `payload` is the POS tag URL's `p` parameter, verbatim.
+    public func tapPreview(payload: String) async throws -> TapPreview {
+        try await api.get("tap/preview", query: ["payload": payload])
+    }
+
+    /// Safe to repeat with the same body: the same receipt comes back, not a second charge.
+    public func tapPay(payload: String, cardId: String) async throws -> TapReceipt {
+        try await api.post("tap/pay", body: HelloRequests.TapPay(payload: payload, cardId: cardId))
     }
 }

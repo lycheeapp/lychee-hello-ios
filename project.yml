@@ -53,6 +53,10 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: org.lycheeapp.lychee-hello
         PRODUCT_NAME: Lychee Hello
         INFOPLIST_FILE: LycheeHello/Resources/Info.plist
+        # Push Notifications (aps-environment: without it APNs never issues a token, so FCM has
+        # nothing to deliver to) and NFC Tag Reading (paying at a Lychee POS from the Cards tab).
+        # Archiving for the App Store switches aps-environment to production by itself.
+        CODE_SIGN_ENTITLEMENTS: LycheeHello/Resources/LycheeHello.entitlements
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1"
     sources:

@@ -644,6 +644,7 @@ enum PaymentCopy {
         switch kind {
         case .withdrawal: return stage == "COMPLETED" ? L("payment_withdrawal_complete") : L("payment_withdrawal_requested")
         case .topUp: return L("payment_top_up_sent")
+        case .tap: return L("payment_paid_at_pos")
         default: return L("payment_sent")
         }
     }
@@ -652,6 +653,7 @@ enum PaymentCopy {
         switch kind {
         case .withdrawal: return "building.columns.fill"
         case .topUp: return "arrow.up.circle.fill"
+        case .tap: return "wave.3.right.circle.fill"
         default: return "creditcard.fill"
         }
     }

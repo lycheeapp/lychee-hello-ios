@@ -101,6 +101,8 @@ struct ChatView: View {
         }
         .sensoryFeedback(.impact(weight: .light), trigger: model.sendCount)
         .task { await model.load() }
+        .onAppear { ChatVisibility.isShowing = true }
+        .onDisappear { ChatVisibility.isShowing = false }
         // Realtime hints arrive via the coordinator; the chat never talks to SSE directly.
         .onChange(of: coordinator.chatInvalidationToken) { _, _ in
             Task { await model.refresh() }

@@ -52,6 +52,10 @@
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
 
+	<!-- Paying at a Lychee POS from the Cards tab: the phone reads the POS's NFC tag. -->
+	<key>NFCReaderUsageDescription</key>
+	<string>Lychee Hello reads the Lychee POS so you can pay at the till.</string>
+
 	<!-- Face ID / Touch ID gate before confirming a payment. -->
 	<key>NSFaceIDUsageDescription</key>
 	<string>Lychee Hello uses Face ID to confirm your payments.</string>

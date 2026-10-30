@@ -190,6 +190,7 @@ enum HistoryCopy {
         case .voucher: return L("history_kind_voucher")
         case .withdrawal: return L("history_kind_withdrawal")
         case .topUp: return L("history_kind_top_up")
+        case .tap: return L("history_kind_tap")
         default: return L("history_paid")
         }
     }
