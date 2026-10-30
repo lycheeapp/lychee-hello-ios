@@ -46,6 +46,6 @@ struct LHPrimaryButton: View {
         .accessibilityLabel(title)
         .accessibilityAddTraits(.isButton)
         // A spinner alone tells VoiceOver nothing.
-        .accessibilityValue(isLoading ? "Working" : "")
+        .accessibilityValue(isLoading ? L("common_working") : "")
     }
 }

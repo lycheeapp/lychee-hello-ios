@@ -123,7 +123,7 @@ public final class SessionCoordinator {
             CrashReporter.recordAPIFailure(endpoint: "auth/switch-account", error: error)
             accountSwitchError = error.userMessage
         } catch {
-            accountSwitchError = "Couldn't switch accounts. Please try again."
+            accountSwitchError = L("settings_switch_failed_body")
         }
     }
 

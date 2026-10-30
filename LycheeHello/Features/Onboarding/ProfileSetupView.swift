@@ -44,10 +44,10 @@ public final class ProfileSetupModel {
             // name can legitimately be rejected. Generic copy would leave the user stuck retrying
             // the same value, so the guidance is explicit.
             errorMessage = error.code == .internalError || error.code == .unknown
-                ? "We couldn't save that name. Try adding a middle name or a different spelling."
+                ? L("profile_error_name")
                 : error.userMessage
         } catch {
-            errorMessage = "Something went wrong. Please try again."
+            errorMessage = L("error_generic")
         }
     }
 }
@@ -71,18 +71,18 @@ struct ProfileSetupView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Tokens.Spacing.xl) {
                     VStack(alignment: .leading, spacing: Tokens.Spacing.sm) {
-                        Text("What should we\ncall you?")
+                        Text(L("profile_title"))
                             .font(Tokens.Typography.largeTitle)
                             .foregroundStyle(Tokens.Colour.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
-                        Text("This is how you'll appear on Lychee.")
+                        Text(L("profile_subtitle_ios"))
                             .font(Tokens.Typography.body)
                             .foregroundStyle(Tokens.Colour.textSecondary)
                     }
                     .padding(.top, Tokens.Spacing.xxl)
 
-                    field(title: "First name", text: $model.firstName, field: .first, content: .givenName)
-                    field(title: "Last name", text: $model.lastName, field: .last, content: .familyName)
+                    field(title: L("profile_first_name"), text: $model.firstName, field: .first, content: .givenName)
+                    field(title: L("profile_last_name"), text: $model.lastName, field: .last, content: .familyName)
 
                     if let error = model.errorMessage {
                         Text(error)
@@ -92,7 +92,7 @@ struct ProfileSetupView: View {
                     }
 
                     LHPrimaryButton(
-                        title: "Continue",
+                        title: L("common_continue"),
                         trailingSystemImage: "arrow.right",
                         isLoading: model.isSaving,
                         isEnabled: model.canSubmit

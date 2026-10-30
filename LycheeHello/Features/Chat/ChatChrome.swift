@@ -82,10 +82,10 @@ struct ChatHeaderTitle: View {
         HStack(spacing: 10) {
             ChatAvatar(size: 36)
             VStack(alignment: .leading, spacing: 0) {
-                Text("Lychee Hello")
+                Text(L("app_name"))
                     .font(Tokens.Chat.title)
                     .foregroundStyle(Tokens.Chat.text)
-                Text(isTyping ? "typing…" : "Payments assistant")
+                Text(isTyping ? L("chat_typing") : L("chat_subtitle"))
                     .font(Tokens.Chat.subtitle)
                     .foregroundStyle(isTyping ? Tokens.Chat.success : Tokens.Chat.meta)
                     .contentTransition(.opacity)
@@ -120,7 +120,7 @@ struct PinnedBalanceBar: View {
                 .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(isPayable ? "Available balance" : "Wallet being activated")
+                Text(isPayable ? L("chat_balance_available") : L("chat_balance_activating"))
                     .font(.caption)
                     .foregroundStyle(isPayable ? Tokens.Chat.meta : Tokens.Colour.danger)
                 Text(isHidden ? "••••" : Money.format(balance?.amount))
@@ -131,7 +131,7 @@ struct PinnedBalanceBar: View {
                     .animation(.snappy, value: balance?.amount)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityHint(isPayable ? "" : "Payments will be available once your wallet is active.")
+            .accessibilityHint(isPayable ? "" : L("error_wallet_not_active"))
 
             Spacer(minLength: 8)
 
@@ -143,7 +143,7 @@ struct PinnedBalanceBar: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(isHidden ? "Show balance" : "Hide balance")
+            .accessibilityLabel(isHidden ? L("chat_balance_show") : L("chat_balance_hide"))
         }
         .padding(.leading, 14)
         .padding(.trailing, 4)
@@ -181,23 +181,23 @@ struct ChatComposer: View {
                 Button {
                     onPick(.balance)
                 } label: {
-                    Label("Pay from balance", systemImage: "wallet.pass")
+                    Label(L("attach_pay_balance"), systemImage: "wallet.pass")
                 }
                 .disabled(!canPay)
                 // A voucher pays for itself, so it works before the wallet is active.
                 Button {
                     onPick(.voucher)
                 } label: {
-                    Label("Use a voucher", systemImage: "ticket")
+                    Label(L("attach_voucher"), systemImage: "ticket")
                 }
                 Button(action: onBalance) {
-                    Label("Check balance", systemImage: "banknote")
+                    Label(L("attach_check_balance"), systemImage: "banknote")
                 }
                 if capabilities.withdraw {
                     Button {
                         onPick(.withdraw)
                     } label: {
-                        Label("Withdraw to bank", systemImage: "building.columns")
+                        Label(L("form_title_withdraw"), systemImage: "building.columns")
                     }
                     .disabled(!canPay)
                 }
@@ -205,7 +205,7 @@ struct ChatComposer: View {
                     Button {
                         onPick(.topUp)
                     } label: {
-                        Label("Top up a customer", systemImage: "arrow.up.circle")
+                        Label(L("form_title_top_up"), systemImage: "arrow.up.circle")
                     }
                 }
             } label: {
@@ -215,9 +215,9 @@ struct ChatComposer: View {
                     .frame(width: 36, height: 36)
                     .contentShape(Rectangle())
             }
-            .accessibilityLabel("Payment options")
+            .accessibilityLabel(L("chat_attach"))
 
-            TextField("Message", text: $draft, axis: .vertical)
+            TextField(L("chat_composer_placeholder"), text: $draft, axis: .vertical)
                 .font(Tokens.Chat.message)
                 .foregroundStyle(Tokens.Chat.text)
                 .tint(Tokens.Colour.brandAccessible)
@@ -233,7 +233,7 @@ struct ChatComposer: View {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .strokeBorder(Tokens.Chat.fieldBorder, lineWidth: 0.5)
                 )
-                .accessibilityLabel("Message")
+                .accessibilityLabel(L("chat_composer_placeholder"))
 
             Button(action: onSend) {
                 Image(systemName: "paperplane.fill")
@@ -249,7 +249,7 @@ struct ChatComposer: View {
             .opacity(canSend ? 1 : 0.45)
             .scaleEffect(canSend ? 1 : 0.9)
             .animation(.snappy(duration: 0.18), value: canSend)
-            .accessibilityLabel("Send")
+            .accessibilityLabel(L("chat_send"))
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
@@ -280,6 +280,6 @@ struct ScrollToBottomButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Scroll to the latest message")
+        .accessibilityLabel(L("chat_scroll_latest"))
     }
 }

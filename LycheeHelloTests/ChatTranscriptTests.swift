@@ -14,6 +14,18 @@ final class ChatTranscriptTests: XCTestCase {
 
     private let now = ISO8601DateFormatter().date(from: "2026-10-29T12:00:00Z")!
 
+    // The labels these assert are the English strings the app ships, whatever the simulator's
+    // language or a language left pinned in Settings.
+    override func setUp() {
+        super.setUp()
+        AppLanguage.set(.english)
+    }
+
+    override func tearDown() {
+        AppLanguage.set(.system)
+        super.tearDown()
+    }
+
     func testADayChipOpensEachDay() {
         let rows = build([
             message("a", fromUser: true, at: "2026-10-28T09:00:00Z"),

@@ -108,10 +108,10 @@ enum ChatRowBuilder {
 
     static func dayLabel(for day: Date, now: Date, calendar: Calendar) -> String {
         let today = calendar.startOfDay(for: now)
-        if calendar.isDate(day, inSameDayAs: today) { return "Today" }
+        if calendar.isDate(day, inSameDayAs: today) { return L("day_today") }
         if let yesterday = calendar.date(byAdding: .day, value: -1, to: today),
            calendar.isDate(day, inSameDayAs: yesterday) {
-            return "Yesterday"
+            return L("day_yesterday")
         }
         if let weekAgo = calendar.date(byAdding: .day, value: -6, to: today), day >= weekAgo {
             return weekdayFormatter.string(from: day)
@@ -127,30 +127,30 @@ enum ChatRowBuilder {
     }
 
     // Formatters are expensive to build; one each for the whole transcript.
-    private static let timeFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .none
-        formatter.timeStyle = .short
-        return formatter
-    }()
+    // In the app's language, so day names follow it even when it differs from the phone's.
+    private static var timeFormatter: DateFormatter { formatter(style: .short) }
+    private static var weekdayFormatter: DateFormatter { formatter(template: "EEEE") }
+    private static var dayMonthFormatter: DateFormatter { formatter(template: "EEE d MMM") }
+    private static var fullDateFormatter: DateFormatter { formatter(template: "d MMM yyyy") }
 
-    private static let weekdayFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.setLocalizedDateFormatFromTemplate("EEEE")
-        return formatter
-    }()
+    private static var formatters: [String: DateFormatter] = [:]
 
-    private static let dayMonthFormatter: DateFormatter = {
+    /// One formatter per language and pattern: building a `DateFormatter` per row is what makes a
+    /// long transcript stutter.
+    private static func formatter(template: String? = nil, style: DateFormatter.Style? = nil) -> DateFormatter {
+        let locale = AppLanguage.locale
+        let key = "\(locale.identifier)|\(template ?? "")|\(style?.rawValue ?? 0)"
+        if let cached = formatters[key] { return cached }
         let formatter = DateFormatter()
-        formatter.setLocalizedDateFormatFromTemplate("EEE d MMM")
+        formatter.locale = locale
+        if let template { formatter.setLocalizedDateFormatFromTemplate(template) }
+        if let style {
+            formatter.dateStyle = .none
+            formatter.timeStyle = style
+        }
+        formatters[key] = formatter
         return formatter
-    }()
-
-    private static let fullDateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.setLocalizedDateFormatFromTemplate("d MMM yyyy")
-        return formatter
-    }()
+    }
 }
 
 /// What tapping a reply button does.

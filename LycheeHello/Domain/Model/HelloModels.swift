@@ -74,11 +74,11 @@ public struct Account: Decodable, Sendable, Equatable, Hashable, Identifiable {
     public var id: String { type }
     public var isBusiness: Bool { type == Account.business }
 
-    /// "Personal account" / "Business account · RIO1".
+    /// "Personal account" / "Business account · RIO1", in the app's language.
     public var kindLabel: String {
-        guard isBusiness else { return "Personal account" }
-        if let code, !code.isEmpty { return "Business account · \(code)" }
-        return "Business account"
+        guard isBusiness else { return L("account_personal") }
+        if let code, !code.isEmpty { return L("account_business_code", code) }
+        return L("account_business")
     }
 
     public init(type: String, name: String?, code: String?, current: Bool) {
@@ -354,17 +354,17 @@ public enum PaymentRecipient {
 
     public static func kindLabel(type: String?, category: String?) -> String? {
         switch category?.uppercased() {
-        case "TAXI": return "Taxi"
-        case "BUS_OPERATOR": return "Bus operator"
-        case "PLAYGROUND": return "Playground"
+        case "TAXI": return L("payee_kind_taxi")
+        case "BUS_OPERATOR": return L("payee_kind_bus_operator")
+        case "PLAYGROUND": return L("payee_kind_playground")
         default: break
         }
         switch type?.uppercased() {
-        case "SERVICE_PROVIDER": return "Business"
-        case "STORE": return "Store"
-        case "REDEMPTION_POINT": return "Store branch"
-        case "TRANSIT_VEHICLE": return "Bus"
-        case "MOBILE_USER": return "Lychee user"
+        case "SERVICE_PROVIDER": return L("payee_kind_business")
+        case "STORE": return L("payee_kind_store")
+        case "REDEMPTION_POINT": return L("payee_kind_branch")
+        case "TRANSIT_VEHICLE": return L("payee_kind_bus")
+        case "MOBILE_USER": return L("payee_kind_person")
         default: return nil
         }
     }

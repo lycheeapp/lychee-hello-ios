@@ -42,7 +42,7 @@ final class PaymentReviewModel {
 
         phase = .authorising
         let outcome = await BiometricGate.authorise(
-            reason: "Confirm your \(Money.format(intent.totalAmount ?? intent.amount)) payment")
+            reason: L("review_biometric_reason", Money.format(intent.totalAmount ?? intent.amount)))
 
         switch outcome {
         case .cancelled:
@@ -73,7 +73,7 @@ final class PaymentReviewModel {
                 phase = .succeeded(settled)
             case .cancelled, .expired:
                 phase = .failed(
-                    message: "This payment was not completed.",
+                    message: L("review_not_completed"),
                     retryable: false)
             default:
                 // CONFIRMED but not yet EXECUTED: settlement is in flight. Poll rather than
@@ -92,7 +92,7 @@ final class PaymentReviewModel {
             )
         } catch {
             CrashReporter.recordPaymentFailure(intentId: intent.id, code: "unexpected")
-            phase = .failed(message: "The payment could not be completed.", retryable: true)
+            phase = .failed(message: L("review_error_confirm"), retryable: true)
         }
     }
 
@@ -108,12 +108,12 @@ final class PaymentReviewModel {
                 return
             }
             if refreshed.status.isTerminal {
-                phase = .failed(message: "This payment was not completed.", retryable: false)
+                phase = .failed(message: L("review_not_completed"), retryable: false)
                 return
             }
         }
         phase = .failed(
-            message: "We're still confirming this payment. Check your chat in a moment.",
+            message: L("review_still_confirming"),
             retryable: false)
     }
 
@@ -157,7 +157,7 @@ struct PaymentReviewSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     if case .review = model.phase {
-                        Button("Cancel") { cancelAndFinish() }
+                        Button(L("common_cancel")) { cancelAndFinish() }
                     }
                 }
             }
@@ -175,12 +175,12 @@ struct PaymentReviewSheet: View {
         switch model.phase {
         case .succeeded:
             switch kind {
-            case .withdrawal: return "Withdrawal requested"
-            case .topUp: return "Top-up complete"
-            default: return "Payment complete"
+            case .withdrawal: return L("payment_withdrawal_requested")
+            case .topUp: return L("review_top_up_complete")
+            default: return L("review_payment_complete")
             }
         case .failed:
-            return model.intent.title ?? "Payment"
+            return model.intent.title ?? L("review_payment")
         default:
             return PaymentCopy.reviewAction(kind)
         }
@@ -206,7 +206,7 @@ struct PaymentReviewSheet: View {
             LHPrimaryButton(title: confirmTitle) {
                 Task { await model.confirm() }
             }
-            Text("You'll be asked to confirm with \(BiometricGate.biometryName).")
+            Text(L("review_biometric_note", BiometricGate.biometryName))
                 .font(Tokens.Typography.caption)
                 .foregroundStyle(Tokens.Colour.textSecondary)
             Spacer()
@@ -216,9 +216,9 @@ struct PaymentReviewSheet: View {
 
     private var confirmTitle: String {
         switch model.intent.paymentKind {
-        case .withdrawal: return "Confirm withdrawal"
-        case .topUp: return "Confirm top-up"
-        default: return "Confirm payment"
+        case .withdrawal: return L("review_confirm_withdrawal")
+        case .topUp: return L("review_confirm_top_up")
+        default: return L("review_confirm_payment")
         }
     }
 
@@ -239,20 +239,20 @@ struct PaymentReviewSheet: View {
                     .font(Tokens.Typography.largeTitle)
                     .foregroundStyle(Tokens.Colour.textPrimary)
                 if let bank = intent.recipientDisplay, !bank.isEmpty {
-                    row("Bank", bank)
+                    row(L("review_bank"), bank)
                 }
                 if let iban = intent.recipientCode {
-                    row("IBAN", iban)
+                    row(L("receipt_iban"), iban)
                 }
-                row("Fee", Money.format(intent.feeAmount ?? 0))
-                row("The bank pays", Money.format(intent.totalAmount ?? intent.amount))
+                row(L("receipt_fee"), Money.format(intent.feeAmount ?? 0))
+                row(L("review_bank_pays"), Money.format(intent.totalAmount ?? intent.amount))
 
             case .topUp:
                 Text(Money.format(intent.totalAmount ?? intent.amount))
                     .font(Tokens.Typography.largeTitle)
                     .foregroundStyle(Tokens.Colour.textPrimary)
                 if let customer = intent.recipientDisplay ?? intent.recipientCode {
-                    row("Customer", customer)
+                    row(L("review_customer"), customer)
                 }
 
             default:
@@ -264,11 +264,11 @@ struct PaymentReviewSheet: View {
                     payeeCard(name: recipient, intent: intent)
                 }
                 if let voucher = intent.voucherCodeMasked {
-                    row("Voucher", voucher)
+                    row(L("receipt_voucher"), voucher)
                 }
                 if let fee = intent.feeAmount, fee > 0 {
-                    row("Fee", Money.format(fee))
-                    row("Amount", Money.format(intent.amount))
+                    row(L("receipt_fee"), Money.format(fee))
+                    row(L("receipt_amount"), Money.format(intent.amount))
                 }
             }
         }
@@ -282,12 +282,12 @@ struct PaymentReviewSheet: View {
         VStack(spacing: Tokens.Spacing.lg) {
             Spacer()
             ProgressView().controlSize(.large)
-            Text(model.phase == .authorising ? "Waiting for confirmation…" : "Completing your payment…")
+            Text(model.phase == .authorising ? L("review_waiting") : L("review_completing"))
                 .font(Tokens.Typography.body)
                 .foregroundStyle(Tokens.Colour.textSecondary)
             // Explicit instruction not to retry: a user force-quitting mid-settlement is exactly
             // how support tickets about "double payments" start.
-            Text("Please don't close the app.")
+            Text(L("review_dont_close"))
                 .font(Tokens.Typography.caption)
                 .foregroundStyle(Tokens.Colour.textSecondary)
             Spacer()
@@ -313,7 +313,7 @@ struct PaymentReviewSheet: View {
                     .font(Tokens.Typography.largeTitle)
                     .foregroundStyle(Tokens.Colour.textPrimary)
                 if let name = intent.recipientDisplay ?? intent.recipientCode {
-                    Text("to \(name)")
+                    Text(L("payment_to", name.bidiIsolated))
                         .font(Tokens.Typography.body)
                         .foregroundStyle(Tokens.Colour.textPrimary)
                 }
@@ -322,7 +322,7 @@ struct PaymentReviewSheet: View {
             VStack(spacing: Tokens.Spacing.md) {
                 if let reference = intent.txnReference {
                     HStack {
-                        Text("Reference")
+                        Text(L("receipt_reference"))
                             .font(Tokens.Typography.body)
                             .foregroundStyle(Tokens.Colour.textSecondary)
                         Spacer()
@@ -337,20 +337,20 @@ struct PaymentReviewSheet: View {
                                 .foregroundStyle(Tokens.Colour.brandAccessible)
                                 .frame(width: Tokens.Hit.minimum, height: Tokens.Hit.minimum)
                         }
-                        .accessibilityLabel("Copy reference")
+                        .accessibilityLabel(L("review_copy_reference"))
                     }
                 }
                 if let when = intent.executedAt {
-                    row("Date", when.formatted(date: .abbreviated, time: .shortened))
+                    row(L("receipt_date"), when.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened).locale(AppLanguage.locale)))
                 }
                 if let fee = intent.feeAmount, fee > 0, intent.paymentKind != .withdrawal {
-                    row("Fee", Money.format(fee))
+                    row(L("receipt_fee"), Money.format(fee))
                 }
                 if let balance = Double(receipt["newBalance"] ?? "") {
-                    row("New balance", Money.format(balance))
+                    row(L("receipt_new_balance"), Money.format(balance))
                 }
                 if let left = Double(receipt["voucherRemaining"] ?? "") {
-                    row("Left on voucher", Money.format(left))
+                    row(L("receipt_voucher_left"), Money.format(left))
                 }
             }
             .padding(Tokens.Spacing.lg)
@@ -359,16 +359,16 @@ struct PaymentReviewSheet: View {
             .clipShape(RoundedRectangle(cornerRadius: Tokens.Radius.card, style: .continuous))
 
             Spacer()
-            LHPrimaryButton(title: "Done") { finish() }
+            LHPrimaryButton(title: L("common_done")) { finish() }
         }
         .padding(.bottom, Tokens.Spacing.xl)
     }
 
     private func successHeadline(_ intent: PaymentIntent) -> String {
         switch intent.paymentKind {
-        case .withdrawal: return "Withdrawal requested"
-        case .topUp: return "Top-up sent"
-        default: return "Payment sent"
+        case .withdrawal: return L("payment_withdrawal_requested")
+        case .topUp: return L("payment_top_up_sent")
+        default: return L("payment_sent")
         }
     }
 
@@ -393,7 +393,7 @@ struct PaymentReviewSheet: View {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.system(size: 13))
                             .foregroundStyle(Tokens.Colour.brand)
-                            .accessibilityLabel("Verified business")
+                            .accessibilityLabel(L("payee_verified"))
                     }
                 }
                 if let summary = intent.recipientDisplay != nil ? intent.recipientSummary : nil {
@@ -405,7 +405,7 @@ struct PaymentReviewSheet: View {
             Spacer(minLength: 0)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("To \(name)")
+        .accessibilityLabel(L("payment_to", name))
     }
 
     private func failureContent(message: String, retryable: Bool) -> some View {
@@ -420,9 +420,9 @@ struct PaymentReviewSheet: View {
                 .multilineTextAlignment(.center)
             Spacer()
             if retryable {
-                LHPrimaryButton(title: "Try again") { Task { await model.confirm() } }
+                LHPrimaryButton(title: L("common_try_again")) { Task { await model.confirm() } }
             }
-            Button("Close") { finish() }
+            Button(L("common_close")) { finish() }
                 .font(Tokens.Typography.callout)
                 .foregroundStyle(Tokens.Colour.textSecondary)
                 .frame(minHeight: Tokens.Hit.minimum)

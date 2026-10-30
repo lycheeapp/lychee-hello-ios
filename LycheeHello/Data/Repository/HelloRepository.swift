@@ -100,6 +100,12 @@ public protocol HelloRepositoryProtocol: Sendable {
     func pendingPaymentIntent() async throws -> PaymentIntent?
     func confirmPayment(intentId: String, idempotencyKey: String) async throws -> PaymentIntent
     func cancelPayment(intentId: String) async throws -> PaymentIntent
+
+    // Payees and history: read-only. Paying still goes through the chat.
+    func directory(query: String?, page: Int) async throws -> DirectoryPage
+    func lookupPayee(_ payee: String) async throws -> PayeeLookup
+    func recentPayees() async throws -> [RecentPayee]
+    func paymentHistory(query: String?, before: Int64?) async throws -> HistoryPage
 }
 
 public actor HelloRepository: HelloRepositoryProtocol {
@@ -296,6 +302,36 @@ public actor HelloRepository: HelloRepositoryProtocol {
 
     public func cancelPayment(intentId: String) async throws -> PaymentIntent {
         try await api.post("payments/intents/\(intentId)/cancel")
+    }
+
+    // MARK: - Payees and history
+
+    /// Stores the app can pay, by name; `query` matches a name or a code.
+    public func directory(query: String?, page: Int) async throws -> DirectoryPage {
+        var parameters = ["page": String(page), "size": "30"]
+        if let query = query?.trimmingCharacters(in: .whitespacesAndNewlines), !query.isEmpty {
+            parameters["q"] = query
+        }
+        return try await api.get("directory", query: parameters)
+    }
+
+    /// Who `payee` — the first word of a payment message — names. A hint, not a check.
+    public func lookupPayee(_ payee: String) async throws -> PayeeLookup {
+        try await api.get("recipients/lookup", query: ["payee": payee])
+    }
+
+    public func recentPayees() async throws -> [RecentPayee] {
+        try await api.get("payments/recent-payees")
+    }
+
+    /// Payments made and received, newest first; `before` is the previous page's `nextCursor`.
+    public func paymentHistory(query: String?, before: Int64?) async throws -> HistoryPage {
+        var parameters = ["limit": "30"]
+        if let query = query?.trimmingCharacters(in: .whitespacesAndNewlines), !query.isEmpty {
+            parameters["q"] = query
+        }
+        if let before { parameters["before"] = String(before) }
+        return try await api.get("payments/history", query: parameters)
     }
 }
 

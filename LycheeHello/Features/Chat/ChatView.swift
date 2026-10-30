@@ -14,13 +14,17 @@ struct ChatView: View {
     static let bottomID = "chat-bottom"
 
     @Environment(SessionCoordinator.self) private var coordinator
-    @State private var model = ChatModel(repository: HelloRepository())
+    /// Owned by the tabs: every tab can start a payment, and every payment goes through the chat.
+    let model: ChatModel
+    /// Opens the Pay sheet for a payee from a receipt.
+    var onPay: (PayeeRef) -> Void = { _ in }
     @State private var balanceHidden = false
     @State private var activeForm: PaymentFormSheet.Mode?
     @State private var isAtBottom = true
     @FocusState private var composerFocused: Bool
 
     var body: some View {
+        @Bindable var model = model
         ScrollViewReader { proxy in
             transcript(proxy)
                 .overlay(alignment: .bottomTrailing) {
@@ -40,6 +44,8 @@ struct ChatView: View {
                     )
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
+                    VStack(spacing: 0) {
+                    PayeeHintChip(hint: model.payeeHint)
                     ChatComposer(
                         draft: $model.draft,
                         focus: $composerFocused,
@@ -50,6 +56,10 @@ struct ChatView: View {
                         onPick: { activeForm = $0 },
                         onBalance: { Task { await model.send(text: "BALANCE") } }
                     )
+                    }
+                }
+                .onChange(of: model.draft) { _, _ in
+                    model.draftChanged()
                 }
                 .onChange(of: model.lastRowID) { _, newValue in
                     guard newValue != nil else { return }
@@ -77,6 +87,16 @@ struct ChatView: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 ChatHeaderTitle(isTyping: model.isSending)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                // Payment history, where WhatsApp keeps a chat's media and files.
+                NavigationLink {
+                    HistoryView(onPay: onPay)
+                } label: {
+                    Image(systemName: "list.bullet.rectangle.portrait")
+                        .foregroundStyle(Tokens.Chat.meta)
+                }
+                .accessibilityLabel(L("history_title"))
             }
         }
         .sensoryFeedback(.impact(weight: .light), trigger: model.sendCount)
@@ -114,10 +134,10 @@ struct ChatView: View {
             }
             .presentationDetents([.medium, .large])
         }
-        .alert("Something went wrong",
+        .alert(L("common_something_went_wrong"),
                isPresented: .init(get: { model.errorMessage != nil },
                                   set: { if !$0 { model.dismissError() } })) {
-            Button("OK", role: .cancel) { model.dismissError() }
+            Button(L("common_ok"), role: .cancel) { model.dismissError() }
         } message: {
             Text(model.errorMessage ?? "")
         }
@@ -167,7 +187,7 @@ struct ChatView: View {
                     if model.isLoadingOlder {
                         ProgressView().controlSize(.small)
                     } else {
-                        Text("Load earlier messages")
+                        Text(L("chat_load_earlier"))
                     }
                 }
                 .font(Tokens.Chat.chip)
@@ -181,7 +201,7 @@ struct ChatView: View {
             .frame(maxWidth: .infinity)
         } else if !model.isLoading || !model.messages.isEmpty {
             // The top of the conversation, like WhatsApp's encryption notice.
-            NoticePill(Text("\(Image(systemName: "lock.fill")) Payments in this chat only go through after you review and confirm them."))
+            NoticePill(Text("\(Image(systemName: "lock.fill")) \(L("chat_notice"))"))
                 .padding(.top, 10)
         }
 
@@ -241,7 +261,7 @@ struct ChatView: View {
 
         case .paymentReceipt:
             BubbleRow(fromUser: false) {
-                PaymentReceiptBubble(message: message, time: time, tail: tail)
+                PaymentReceiptBubble(message: message, time: time, tail: tail, onPayAgain: onPay)
             }
 
         case .paymentReceived:
@@ -278,18 +298,18 @@ struct ChatView: View {
     private var emptyState: some View {
         VStack(spacing: 10) {
             ChatAvatar(size: 64)
-            Text("Hi \(coordinator.user?.firstName ?? "there") 👋")
+            Text(coordinator.user?.firstName.flatMap { $0.isEmpty ? nil : L("chat_empty_hi_name", $0) } ?? L("chat_empty_hi"))
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(Tokens.Chat.text)
-            Text("Pay anyone by sending a message:")
+            Text(L("chat_empty_intro"))
                 .font(.subheadline)
                 .foregroundStyle(Tokens.Chat.meta)
             VStack(alignment: .leading, spacing: 6) {
-                example("payee amount", "from your balance")
-                example("payee voucher amount", "with a voucher")
-                example("BALANCE", "your balance")
+                example(L("chat_example_balance_command"), L("chat_example_balance_meaning"))
+                example(L("chat_example_voucher_command"), L("chat_example_voucher_meaning"))
+                example(L("chat_example_check_command"), L("chat_example_check_meaning"))
             }
-            Text("Or tap + for a guided payment.")
+            Text(L("chat_empty_outro"))
                 .font(.footnote)
                 .foregroundStyle(Tokens.Chat.meta)
         }
@@ -344,5 +364,50 @@ struct ChatView: View {
         } else {
             proxy.scrollTo(Self.bottomID, anchor: .bottom)
         }
+    }
+}
+
+/// "Rio Taxi ✓" over the keyboard while "RIO1 50" is still being typed: who the payment will go to,
+/// before the review card — or that no payee has that code, before a message is wasted on it.
+struct PayeeHintChip: View {
+    let hint: PayeeHint?
+
+    var body: some View {
+        Group {
+            if let hint {
+                HStack(spacing: 6) {
+                    if hint.found {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Tokens.Chat.success)
+                        Text((hint.name ?? hint.code ?? hint.payee).bidiIsolated)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Tokens.Chat.text)
+                            .lineLimit(1)
+                        if let summary = PaymentRecipient.summary(type: hint.type, category: hint.category, code: hint.code) {
+                            Text("· \(summary)")
+                                .font(.footnote)
+                                .foregroundStyle(Tokens.Chat.meta)
+                                .lineLimit(1)
+                        }
+                    } else {
+                        Image(systemName: "exclamationmark.circle")
+                            .foregroundStyle(Tokens.Chat.meta)
+                        Text(L("chat_hint_not_found", hint.payee.bidiIsolated))
+                            .font(.subheadline)
+                            .foregroundStyle(Tokens.Chat.meta)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(Capsule().fill(Color.white.opacity(0.96)))
+                .overlay(Capsule().strokeBorder(Tokens.Chat.barHairline, lineWidth: 0.5))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.bottom, 4)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .animation(.snappy(duration: 0.2), value: hint)
     }
 }

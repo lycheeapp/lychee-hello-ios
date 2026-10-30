@@ -24,10 +24,10 @@ struct OtpEntryView: View {
 
             VStack(alignment: .leading, spacing: Tokens.Spacing.xl) {
                 VStack(alignment: .leading, spacing: Tokens.Spacing.sm) {
-                    Text("Enter your code")
+                    Text(L("otp_title"))
                         .font(Tokens.Typography.largeTitle)
                         .foregroundStyle(Tokens.Colour.textPrimary)
-                    Text("We sent a \(model.codeLength)-digit code to \(model.maskedPhone)")
+                    Text(L("otp_sent_to", model.codeLength, model.maskedPhone.bidiIsolated))
                         .font(Tokens.Typography.body)
                         .foregroundStyle(Tokens.Colour.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -46,7 +46,7 @@ struct OtpEntryView: View {
                 if model.isVerifying {
                     HStack(spacing: Tokens.Spacing.sm) {
                         ProgressView()
-                        Text("Verifying…")
+                        Text(L("otp_verifying"))
                             .font(Tokens.Typography.callout)
                             .foregroundStyle(Tokens.Colour.textSecondary)
                     }
@@ -75,7 +75,7 @@ struct OtpEntryView: View {
                 .textContentType(.oneTimeCode)   // enables SMS autofill
                 .focused($focused)
                 .opacity(0.01)                   // present but invisible; must not be `hidden`
-                .accessibilityLabel("Verification code")
+                .accessibilityLabel(L("otp_code_label"))
 
             HStack(spacing: Tokens.Spacing.md) {
                 ForEach(0..<model.codeLength, id: \.self) { index in
@@ -84,6 +84,8 @@ struct OtpEntryView: View {
             }
             .allowsHitTesting(false)
         }
+        // The code's digits run left to right in Arabic too, as the SMS shows them.
+        .environment(\.layoutDirection, .leftToRight)
         .contentShape(Rectangle())
         .onTapGesture { focused = true }
         // The boxes are decoration; the field above carries the real value for VoiceOver.
@@ -112,19 +114,19 @@ struct OtpEntryView: View {
 
     private var resendRow: some View {
         HStack(spacing: Tokens.Spacing.xs) {
-            Text("Didn't get it?")
+            Text(L("otp_didnt_get_it"))
                 .font(Tokens.Typography.callout)
                 .foregroundStyle(Tokens.Colour.textSecondary)
 
             if model.canResend {
-                Button("Resend code") {
+                Button(L("otp_resend_short")) {
                     Task { await model.resend() }
                 }
                 .font(Tokens.Typography.callout.weight(.semibold))
                 .foregroundStyle(Tokens.Colour.brand)
                 .frame(minHeight: Tokens.Hit.minimum)
             } else {
-                Text("Resend in \(model.secondsUntilResend)s")
+                Text(L("otp_resend_in_short", model.secondsUntilResend))
                     .font(Tokens.Typography.callout)
                     .foregroundStyle(Tokens.Colour.textSecondary)
                     // Otherwise VoiceOver announces every tick.

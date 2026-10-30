@@ -9,7 +9,10 @@ struct SettingsView: View {
 
     @Environment(SessionCoordinator.self) private var coordinator
     @AppStorage("biometricLoginEnabled") private var biometricLogin = true
+    @AppStorage(AppLanguage.storageKey) private var languageRaw = AppLanguage.system.rawValue
     @State private var showSignOutConfirm = false
+    /// Opens the Pay sheet for a payee from a receipt in the history.
+    var onPay: (PayeeRef) -> Void = { _ in }
 
     var body: some View {
         ZStack {
@@ -30,7 +33,7 @@ struct SettingsView: View {
                             } label: {
                                 Label {
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text("Switch to \(account.name ?? (account.isBusiness ? "business" : "personal"))")
+                                        Text(L("settings_switch_to", (account.name ?? L(account.isBusiness ? "settings_switch_business" : "settings_switch_personal")).bidiIsolated))
                                             .font(Tokens.Typography.body)
                                             .foregroundStyle(Tokens.Colour.textPrimary)
                                         Text(account.kindLabel)
@@ -45,23 +48,41 @@ struct SettingsView: View {
                             .disabled(coordinator.isSwitchingAccount)
                         }
                     } footer: {
-                        Text("Payments come from the account you're signed in as.")
+                        Text(L("settings_switch_footer"))
                     }
                 }
 
                 Section {
-                    row("Account & profile", "Personal details and phone number", "person")
-                    row("Privacy & security", "Blocked accounts and connected devices", "lock.shield")
-                    row("Notifications", "Messages and payment alerts", "bell")
-                    row("Appearance", "Light mode", "moon")
+                    NavigationLink {
+                        HistoryView(onPay: onPay)
+                    } label: {
+                        row(L("history_title"), L("settings_history_subtitle"), "list.bullet.rectangle.portrait")
+                    }
+                    Picker(selection: languageBinding) {
+                        ForEach(AppLanguage.allCases) { language in
+                            Text(Self.name(of: language)).tag(language)
+                        }
+                    } label: {
+                        row(L("settings_language"), Self.name(of: AppLanguage(rawValue: languageRaw) ?? .system), "globe")
+                    }
+                    .pickerStyle(.navigationLink)
+                } footer: {
+                    Text(L("settings_language_note"))
+                }
+
+                Section {
+                    row(L("settings_account"), L("settings_account_subtitle"), "person")
+                    row(L("settings_privacy"), L("settings_privacy_subtitle"), "lock.shield")
+                    row(L("settings_notifications"), L("settings_notifications_subtitle"), "bell")
+                    row(L("settings_appearance"), L("settings_appearance_subtitle"), "moon")
                 }
 
                 Section {
                     Toggle(isOn: $biometricLogin) {
                         Label {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Biometric login").font(Tokens.Typography.body)
-                                Text("Use \(BiometricGate.biometryName)")
+                                Text(L("settings_biometric")).font(Tokens.Typography.body)
+                                Text(L("settings_biometric_use", BiometricGate.biometryName))
                                     .font(Tokens.Typography.caption)
                                     .foregroundStyle(Tokens.Colour.textSecondary)
                             }
@@ -73,15 +94,15 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    row("Help & support", "Get help with Lychee Hello", "questionmark.circle")
-                    row("About Lychee Hello", "Privacy, terms and app information", "info.circle")
+                    row(L("settings_help"), L("settings_help_subtitle"), "questionmark.circle")
+                    row(L("settings_about"), L("settings_about_subtitle"), "info.circle")
                 }
 
                 Section {
                     Button(role: .destructive) {
                         showSignOutConfirm = true
                     } label: {
-                        Text("Log out")
+                        Text(L("settings_log_out"))
                             .frame(maxWidth: .infinity)
                             .foregroundStyle(Tokens.Colour.danger)
                     }
@@ -90,28 +111,28 @@ struct SettingsView: View {
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
         }
-        .navigationTitle("Settings")
+        .navigationTitle(L("settings_title"))
         .overlay {
             if coordinator.isSwitchingAccount {
-                ProgressView("Switching account…")
+                ProgressView(L("settings_switching"))
                     .padding(Tokens.Spacing.lg)
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: Tokens.Radius.card))
             }
         }
-        .alert("Couldn't switch accounts",
+        .alert(L("settings_switch_failed"),
                isPresented: .init(get: { coordinator.accountSwitchError != nil },
                                   set: { if !$0 { coordinator.accountSwitchError = nil } })) {
-            Button("OK", role: .cancel) { coordinator.accountSwitchError = nil }
+            Button(L("common_ok"), role: .cancel) { coordinator.accountSwitchError = nil }
         } message: {
             Text(coordinator.accountSwitchError ?? "")
         }
-        .confirmationDialog("Log out of Lychee Hello?",
+        .confirmationDialog(L("settings_log_out_confirm"),
                             isPresented: $showSignOutConfirm,
                             titleVisibility: .visible) {
-            Button("Log out", role: .destructive) {
+            Button(L("settings_log_out"), role: .destructive) {
                 Task { await coordinator.signOut() }
             }
-            Button("Cancel", role: .cancel) {}
+            Button(L("common_cancel"), role: .cancel) {}
         }
     }
 
@@ -148,12 +169,39 @@ struct SettingsView: View {
 
     /// "Verified Lychee account", or which account this is when the number has two.
     private var accountLine: String {
-        guard let user = coordinator.user else { return "Verified Lychee account" }
+        guard let user = coordinator.user else { return L("account_verified") }
         if user.isBusiness {
-            if let code = user.accountCode, !code.isEmpty { return "Business account · \(code)" }
-            return "Business account"
+            if let code = user.accountCode, !code.isEmpty { return L("account_business_code", code) }
+            return L("account_business")
         }
-        return coordinator.accounts.count > 1 ? "Personal account" : "Verified Lychee account"
+        return coordinator.accounts.count > 1 ? L("account_personal") : L("account_verified")
+    }
+
+    /// Changing the language rebuilds the screens in it (see `RootView`), and `/me` carries the new
+    /// `Accept-Language`, which the server records: what it writes for this user unprompted — a
+    /// payment received, a push — follows.
+    private var languageBinding: Binding<AppLanguage> {
+        Binding(
+            get: { AppLanguage(rawValue: languageRaw) ?? .system },
+            set: { language in
+                guard language.rawValue != languageRaw else { return }
+                AppLanguage.set(language)
+                languageRaw = language.rawValue
+                Task { await coordinator.refreshCapabilities() }
+            }
+        )
+    }
+
+    /// "System default (English)", "English", "العربية" — each language named in itself.
+    static func name(of language: AppLanguage) -> String {
+        switch language {
+        case .system:
+            return L("settings_language_system", AppLanguage.effectiveTag(for: .system) == "ar" ? "العربية" : "English")
+        case .english:
+            return "English"
+        case .arabic:
+            return "العربية"
+        }
     }
 
     /// Placeholder destinations. Wired as non-navigating rows rather than dead `NavigationLink`s so
@@ -181,7 +229,7 @@ struct AccountChooserSheet: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: Tokens.Spacing.lg) {
-                Text("This number has more than one Lychee account. Payments come from the one you choose — you can switch any time in Settings.")
+                Text(L("account_chooser_body"))
                     .font(Tokens.Typography.body)
                     .foregroundStyle(Tokens.Colour.textSecondary)
 
@@ -198,7 +246,7 @@ struct AccountChooserSheet: View {
                                     .background(Tokens.Colour.surfaceMuted)
                                     .clipShape(Circle())
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(account.name ?? (account.isBusiness ? "Business" : "Personal"))
+                                    Text(account.name ?? L(account.isBusiness ? "account_chooser_business" : "account_chooser_personal"))
                                         .font(Tokens.Typography.headline)
                                         .foregroundStyle(Tokens.Colour.textPrimary)
                                     Text(account.kindLabel)
@@ -209,7 +257,7 @@ struct AccountChooserSheet: View {
                                 if account.current {
                                     Image(systemName: "checkmark.circle.fill")
                                         .foregroundStyle(Tokens.Colour.brand)
-                                        .accessibilityLabel("Signed in")
+                                        .accessibilityLabel(L("account_signed_in"))
                                 }
                             }
                             .padding(Tokens.Spacing.md)
@@ -233,7 +281,7 @@ struct AccountChooserSheet: View {
             }
             .padding(Tokens.Spacing.gutter)
             .background(Tokens.Colour.surface.ignoresSafeArea())
-            .navigationTitle("Which account?")
+            .navigationTitle(L("account_chooser_title"))
             .navigationBarTitleDisplayMode(.inline)
         }
         .interactiveDismissDisabled(coordinator.isSwitchingAccount)

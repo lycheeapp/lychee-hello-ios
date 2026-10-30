@@ -153,6 +153,10 @@ private final class RecordingRepository: HelloRepositoryProtocol, @unchecked Sen
     func paymentIntent(id: String) async throws -> PaymentIntent { intent(status: .confirmed) }
     func pendingPaymentIntent() async throws -> PaymentIntent? { nil }
     func cancelPayment(intentId: String) async throws -> PaymentIntent { intent(status: .cancelled) }
+    func directory(query: String?, page: Int) async throws -> DirectoryPage { DirectoryPage(entries: [], nextPage: nil) }
+    func lookupPayee(_ payee: String) async throws -> PayeeLookup { PayeeLookup(found: false, code: payee, name: nil, type: nil, category: nil) }
+    func recentPayees() async throws -> [RecentPayee] { [] }
+    func paymentHistory(query: String?, before: Int64?) async throws -> HistoryPage { HistoryPage(entries: [], nextCursor: nil) }
 }
 
 /// Redaction — these values reach a third-party crash service.

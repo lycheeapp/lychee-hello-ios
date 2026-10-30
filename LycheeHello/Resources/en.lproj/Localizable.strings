@@ -1,0 +1,297 @@
+/* Lychee Hello — English strings. Keys match the Android app's string resources. */
+
+/* Common */
+"app_name" = "Lychee Hello";
+"common_back" = "Back";
+"common_cancel" = "Cancel";
+"common_clear" = "Clear";
+"common_continue" = "Continue";
+"common_done" = "Done";
+"common_ok" = "OK";
+"common_try_again" = "Try again";
+"day_today" = "Today";
+"day_yesterday" = "Yesterday";
+
+/* Tabs */
+"tab_chats" = "Chats";
+"tab_stores" = "Stores";
+"tab_settings" = "Settings";
+
+/* Welcome (legacy) */
+
+/* Onboarding */
+"phone_title" = "Welcome to\nLychee Hello";
+"phone_tagline" = "Chat. Pay. Simply.";
+"phone_label" = "Mobile number";
+"phone_country_code" = "Country code, %1$@";
+"phone_note" = "We'll send you a one-time verification code";
+"country_ps" = "Palestine";
+"country_il" = "Israel";
+"otp_title" = "Enter your code";
+"otp_sent_to" = "We sent a %1$d-digit code to %2$@";
+"otp_verifying" = "Verifying…";
+"otp_resend" = "Send a new code";
+"otp_resend_in" = "You can request a new code in %1$ds";
+"otp_code_label" = "Verification code";
+"otp_error_resend" = "Couldn't resend the code. Please try again.";
+"profile_title" = "What should we\ncall you?";
+"profile_subtitle" = "This is the name people see when you pay them.";
+"profile_first_name" = "First name";
+"profile_last_name" = "Last name";
+"profile_error_save" = "Couldn't save your details. Please try again.";
+
+/* Errors */
+"error_generic" = "Something went wrong. Please try again.";
+"error_no_connection" = "No connection. Check your network and try again.";
+"error_invalid_phone" = "Enter a valid phone number.";
+"error_offline" = "You appear to be offline. Check your connection and try again.";
+"error_timed_out" = "That took too long. Please try again.";
+"error_session_expired" = "Your session has expired. Please sign in again.";
+"error_invalid_phone_number" = "That phone number doesn't look right.";
+"error_invalid_code" = "That code isn't valid. Please check and try again.";
+"error_rate_limited" = "Too many attempts. Please wait a moment.";
+"error_wallet_not_active" = "Your wallet is being activated. Payments will be available once your wallet is active.";
+"error_message_format" = "Send a payment as \"payee amount\", or \"payee voucher amount\".";
+"error_recipient_not_found" = "We couldn't find that payee.";
+"error_invalid_amount" = "That amount isn't valid.";
+"error_voucher_not_usable" = "That voucher can't be used for this payment.";
+"error_payment_pending" = "You already have a payment waiting for confirmation.";
+"error_payment_expired" = "This payment expired before it was confirmed.";
+"error_payment_unavailable" = "This payment is no longer available.";
+
+/* Chat */
+"chat_subtitle" = "Payments assistant";
+"chat_typing" = "typing…";
+"chat_notice" = "Payments in this chat only go through after you review and confirm them.";
+"chat_empty_hi" = "Hi there 👋";
+"chat_empty_hi_name" = "Hi %1$@ 👋";
+"chat_empty_intro" = "Pay anyone by sending a message:";
+"chat_example_balance_command" = "payee amount";
+"chat_example_balance_meaning" = "from your balance";
+"chat_example_voucher_command" = "payee voucher amount";
+"chat_example_voucher_meaning" = "with a voucher";
+"chat_example_check_command" = "BALANCE";
+"chat_example_check_meaning" = "your balance";
+"chat_empty_outro" = "Or tap + for a guided payment.";
+"chat_balance_available" = "Available balance";
+"chat_balance_activating" = "Wallet being activated";
+"chat_balance_show" = "Show balance";
+"chat_balance_hide" = "Hide balance";
+"chat_attach" = "Payment options";
+"chat_composer_placeholder" = "Message";
+"chat_send" = "Send";
+"chat_scroll_latest" = "Scroll to the latest message";
+"chat_message_copied" = "Message copied";
+"chat_retry" = "Not sent. Tap to retry";
+"chat_tick_sending" = "Sending";
+"chat_tick_sent" = "Sent";
+"chat_tick_read" = "Read";
+"chat_a11y_you" = "You";
+"chat_a11y_lychee" = "Lychee";
+"chat_a11y_sending" = "sending";
+"chat_a11y_sent" = "sent";
+"chat_a11y_read" = "read";
+"chat_a11y_not_sent" = "not sent";
+"chat_hint_not_found" = "No payee with the code %1$@";
+"chat_error_load" = "Couldn't load your chat.";
+"chat_error_send" = "Couldn't send that message.";
+"chat_error_payment" = "Couldn't start that payment.";
+"chat_error_withdrawal" = "Couldn't start that withdrawal.";
+"chat_error_top_up" = "Couldn't start that top-up.";
+"attach_pay_balance" = "Pay from balance";
+"attach_voucher" = "Use a voucher";
+"attach_balance" = "Balance";
+"attach_withdraw" = "Withdraw";
+"attach_top_up" = "Top up";
+
+/* Payment cards */
+"payment_to" = "to %1$@";
+"payment_from" = "from %1$@";
+"payment_iban" = "IBAN %1$@";
+"payment_voucher" = "Voucher %1$@";
+"payment_plus_fee" = "%1$@ + %2$@ fee";
+"payment_ref" = "Ref %1$@";
+"payment_new_balance" = "New balance %1$@";
+"payment_voucher_left" = "Left on voucher %1$@";
+"payment_reference_copied" = "Reference copied";
+"payment_review_closed" = "Payment review closed";
+"payment_paid" = "Paid";
+"payment_processing" = "Processing…";
+"payment_cancelled" = "Payment cancelled";
+"payment_review_expired" = "Review expired";
+"payment_ready" = "Payment ready to review";
+"payment_ready_withdrawal" = "Withdrawal ready to review";
+"payment_ready_top_up" = "Top-up ready to review";
+"payment_review" = "Review payment";
+"payment_review_withdrawal" = "Review withdrawal";
+"payment_review_top_up" = "Review top-up";
+"payment_sent" = "Payment sent";
+"payment_withdrawal_requested" = "Withdrawal requested";
+"payment_withdrawal_complete" = "Withdrawal complete";
+"payment_top_up_sent" = "Top-up sent";
+"payment_received" = "Payment received";
+"payment_pay_again" = "Pay again";
+"payment_recipient" = "Recipient";
+"payee_verified" = "Verified business";
+"payee_kind_taxi" = "Taxi";
+"payee_kind_bus_operator" = "Bus operator";
+"payee_kind_playground" = "Playground";
+"payee_kind_business" = "Business";
+"payee_kind_store" = "Store";
+"payee_kind_branch" = "Store branch";
+"payee_kind_bus" = "Bus";
+"payee_kind_person" = "Lychee user";
+
+/* Review sheet */
+"review_bank_pays" = "The bank pays";
+"review_customer" = "Customer";
+"review_confirm_payment" = "Confirm payment";
+"review_confirm_withdrawal" = "Confirm withdrawal";
+"review_confirm_top_up" = "Confirm top-up";
+"review_cancel_payment" = "Cancel payment";
+"review_cancel_withdrawal" = "Cancel withdrawal";
+"review_cancel_top_up" = "Cancel top-up";
+"review_copy_reference" = "Copy reference";
+"review_error_confirm" = "The payment could not be completed.";
+"review_error_cancel" = "Couldn't cancel that payment.";
+
+/* Guided forms */
+"form_title_balance" = "Pay from balance";
+"form_title_voucher" = "Pay with a voucher";
+"form_title_withdraw" = "Withdraw to bank";
+"form_title_top_up" = "Top up a customer";
+"form_payee" = "Payee code or phone";
+"form_iban_hint" = "The bank account the money goes to. It must be in your name.";
+"form_customer_phone" = "Customer's mobile number";
+"form_amount_optional" = "Amount (optional)";
+"form_withdraw_hint" = "Leave empty to withdraw your whole available balance. A fee may apply; you will see it before you confirm.";
+"form_pin" = "Your top-up PIN";
+"form_pin_hint" = "Your PIN is checked and never stored or shown in the chat.";
+
+/* Pay sheet */
+"pay_paying" = "You're paying";
+"pay_source_balance" = "From balance";
+"pay_source_voucher" = "Voucher";
+"pay_wallet_not_active" = "Your wallet isn't active yet — you can pay with a voucher.";
+"pay_amount" = "Amount";
+"pay_voucher_code" = "Voucher code";
+"pay_voucher_typing" = "Typing";
+"pay_delete" = "Delete";
+"pay_review" = "Review payment";
+"pay_nothing_until_confirm" = "Nothing is paid until you confirm.";
+
+/* Stores */
+"stores_title" = "Stores";
+"stores_search" = "Search stores or codes";
+"stores_pay_again" = "Pay again";
+"stores_all" = "All stores";
+"stores_tap_to_pay" = "Tap to pay this store";
+"stores_none_title" = "No stores yet";
+"stores_none_body" = "Stores you can pay will appear here.";
+"stores_no_match_title" = "No matches";
+"stores_no_match_body" = "No store matches \"%1$@\".";
+"stores_error_title" = "Couldn't load stores";
+"stores_error_load" = "Couldn't load stores.";
+
+/* History and receipts */
+"history_title" = "Payment history";
+"history_search" = "Search by name, code or reference";
+"history_paid" = "Paid";
+"history_received" = "Received";
+"history_kind_voucher" = "Paid with a voucher";
+"history_kind_withdrawal" = "Withdrawal";
+"history_kind_top_up" = "Top-up";
+"history_empty_title" = "No payments yet";
+"history_empty_body" = "Payments you make and receive will appear here.";
+"history_no_match_title" = "No matches";
+"history_no_match_body" = "No payment matches \"%1$@\".";
+"history_error_title" = "Couldn't load your history";
+"history_error_load" = "Couldn't load your payment history.";
+"history_share_image" = "Image";
+"history_share_pdf" = "PDF";
+"history_share_title" = "Share receipt";
+"history_pay_again" = "Pay %1$@ again";
+"receipt_title" = "Payment receipt";
+"receipt_to" = "to %1$@";
+"receipt_from" = "from %1$@";
+"receipt_date" = "Date";
+"receipt_reference" = "Reference";
+"receipt_payee_code" = "Payee code";
+"receipt_iban" = "IBAN";
+"receipt_amount" = "Amount";
+"receipt_fee" = "Fee";
+"receipt_total" = "Total";
+"receipt_voucher" = "Voucher";
+"receipt_new_balance" = "New balance";
+"receipt_voucher_left" = "Left on voucher";
+"receipt_footer" = "Lychee Hello · Keep this receipt for your records";
+
+/* Settings and accounts */
+"settings_title" = "Settings";
+"settings_history_subtitle" = "Receipts for everything you've paid and received";
+"settings_language" = "Language";
+"settings_language_system" = "System default (%1$@)";
+"settings_language_note" = "\"System default\" follows your phone's language. Lychee's replies in the chat follow it too.";
+"settings_account" = "Account & profile";
+"settings_account_subtitle" = "Personal details and phone number";
+"settings_privacy" = "Privacy & security";
+"settings_privacy_subtitle" = "Blocked accounts and connected devices";
+"settings_notifications" = "Notifications";
+"settings_notifications_subtitle" = "Messages and payment alerts";
+"settings_appearance" = "Appearance";
+"settings_appearance_subtitle" = "Light mode";
+"settings_biometric" = "Biometric login";
+"settings_biometric_subtitle" = "Use fingerprint or face unlock";
+"settings_help" = "Help & support";
+"settings_help_subtitle" = "Get help with Lychee Hello";
+"settings_about" = "About Lychee Hello";
+"settings_about_subtitle" = "Privacy, terms and app information";
+"settings_log_out" = "Log out";
+"settings_log_out_confirm" = "Log out of Lychee Hello?";
+"settings_switching" = "Switching account…";
+"settings_switch_footer" = "Payments come from the account you're signed in as.";
+"settings_switch_to" = "Switch to %1$@";
+"settings_switch_business" = "business";
+"settings_switch_personal" = "personal";
+"settings_switch_failed" = "Couldn't switch accounts";
+"settings_switch_failed_body" = "Couldn't switch accounts. Please try again.";
+"account_verified" = "Verified Lychee account";
+"account_personal" = "Personal account";
+"account_business" = "Business account";
+"account_business_code" = "Business account · %1$@";
+"account_chooser_title" = "Which account?";
+"account_chooser_body" = "This number has more than one Lychee account. Payments come from the one you choose — you can switch any time in Settings.";
+"account_chooser_business" = "Business";
+"account_chooser_personal" = "Personal";
+"account_signed_in" = "Signed in";
+
+/* iOS only */
+"attach_check_balance" = "Check balance";
+"chat_load_earlier" = "Load earlier messages";
+"common_close" = "Close";
+"common_copy" = "Copy";
+"common_something_went_wrong" = "Something went wrong";
+"common_working" = "Working";
+"form_pay_to" = "Pay to";
+"form_pin_short" = "PIN";
+"form_voucher_placeholder" = "%d-character code";
+"otp_didnt_get_it" = "Didn't get it?";
+"otp_resend_in_short" = "Resend in %ds";
+"otp_resend_short" = "Resend code";
+"pay_source" = "Pay from";
+"phone_country_code_short" = "Country code";
+"phone_country_hint" = "Opens the country list";
+"profile_error_name" = "We couldn't save that name. Try adding a middle name or a different spelling.";
+"profile_subtitle_ios" = "This is how you'll appear on Lychee.";
+"review_bank" = "Bank";
+"review_biometric_note" = "You'll be asked to confirm with %@.";
+"review_biometric_reason" = "Confirm your %@ payment";
+"review_completing" = "Completing your payment…";
+"review_dont_close" = "Please don't close the app.";
+"review_not_completed" = "This payment was not completed.";
+"review_payment" = "Payment";
+"review_payment_complete" = "Payment complete";
+"review_still_confirming" = "We're still confirming this payment. Check your chat in a moment.";
+"review_top_up_complete" = "Top-up complete";
+"review_waiting" = "Waiting for confirmation…";
+"settings_biometric_use" = "Use %@";

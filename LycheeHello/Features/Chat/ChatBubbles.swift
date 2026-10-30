@@ -106,12 +106,12 @@ struct TicksView: View {
             Image(systemName: "clock")
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(Tokens.Chat.tickUnread)
-                .accessibilityLabel("Sending")
+                .accessibilityLabel(L("chat_tick_sending"))
         case .sent:
             Image(systemName: "checkmark")
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(Tokens.Chat.tickUnread)
-                .accessibilityLabel("Sent")
+                .accessibilityLabel(L("chat_tick_sent"))
         case .read:
             ZStack(alignment: .leading) {
                 Image(systemName: "checkmark")
@@ -120,7 +120,7 @@ struct TicksView: View {
             .font(.system(size: 10, weight: .semibold))
             .foregroundStyle(Tokens.Chat.tickRead)
             .padding(.trailing, 4.5)
-            .accessibilityLabel("Read")
+            .accessibilityLabel(L("chat_tick_read"))
         case .failed:
             // The red button beside the bubble carries the failure; repeating it here is noise.
             EmptyView()
@@ -200,7 +200,7 @@ struct TextBubble: View {
                 Button {
                     UIPasteboard.general.string = body
                 } label: {
-                    Label("Copy", systemImage: "doc.on.doc")
+                    Label(L("common_copy"), systemImage: "doc.on.doc")
                 }
             }
         }
@@ -226,13 +226,13 @@ struct TextBubble: View {
     }
 
     private var accessibilityText: String {
-        let speaker = message.isFromUser ? "You" : "Lychee"
+        let speaker = message.isFromUser ? L("chat_a11y_you") : L("chat_a11y_lychee")
         var status = ""
         switch ticks {
-        case .pending?: status = ", sending"
-        case .sent?:    status = ", sent"
-        case .read?:    status = ", read"
-        case .failed?:  status = ", not sent"
+        case .pending?: status = ", " + L("chat_a11y_sending")
+        case .sent?:    status = ", " + L("chat_a11y_sent")
+        case .read?:    status = ", " + L("chat_a11y_read")
+        case .failed?:  status = ", " + L("chat_a11y_not_sent")
         case nil:       status = ""
         }
         return "\(speaker): \(message.body ?? ""), \(time)\(status)"
@@ -263,7 +263,7 @@ struct PaymentRequestBubble: View {
 
                 if intent.paymentKind == .withdrawal {
                     if let bank = intent.recipientDisplay ?? intent.recipientCode {
-                        Text("to \(bank)")
+                        Text(L("payment_to", bank.bidiIsolated))
                             .font(.subheadline)
                             .foregroundStyle(Tokens.Chat.text)
                     }
@@ -275,17 +275,17 @@ struct PaymentRequestBubble: View {
                     )
                 }
                 if intent.paymentKind == .withdrawal, let iban = intent.recipientCode, intent.recipientDisplay != nil {
-                    Text("IBAN \(iban)")
+                    Text(L("payment_iban", iban.bidiIsolated))
                         .font(.footnote.monospaced())
                         .foregroundStyle(Tokens.Chat.meta)
                 }
                 if let masked = intent.voucherCodeMasked {
-                    Text("Voucher \(masked)")
+                    Text(L("payment_voucher", masked.bidiIsolated))
                         .font(.footnote)
                         .foregroundStyle(Tokens.Chat.meta)
                 }
                 if let fee = intent.feeAmount, fee > 0 {
-                    Text("\(Money.format(intent.amount)) + \(Money.format(fee)) fee")
+                    Text(L("payment_plus_fee", Money.format(intent.amount), Money.format(fee)))
                         .font(.footnote)
                         .foregroundStyle(Tokens.Chat.meta)
                 }
@@ -340,7 +340,7 @@ struct ClosedPaymentRequestBubble: View {
                     .strikethrough(intent.status == .cancelled || intent.status == .expired)
 
                 if let name = intent.recipientDisplay ?? intent.recipientCode {
-                    Text("to \(name)")
+                    Text(L("payment_to", name.bidiIsolated))
                         .font(.subheadline)
                         .foregroundStyle(Tokens.Chat.text)
                         .lineLimit(1)
@@ -348,7 +348,7 @@ struct ClosedPaymentRequestBubble: View {
 
                 HStack(alignment: .lastTextBaseline, spacing: 6) {
                     if intent.status == .executed, let reference = intent.txnReference {
-                        Text("Ref \(reference)")
+                        Text(L("payment_ref", reference))
                             .font(.footnote.monospaced())
                             .foregroundStyle(Tokens.Chat.meta)
                             .textSelection(.enabled)
@@ -366,7 +366,7 @@ struct ClosedPaymentRequestBubble: View {
             .accessibilityElement(children: .combine)
         } else {
             HStack(alignment: .lastTextBaseline, spacing: 6) {
-                Label("Payment review closed", systemImage: "creditcard")
+                Label(L("payment_review_closed"), systemImage: "creditcard")
                     .font(.subheadline)
                     .foregroundStyle(Tokens.Chat.meta)
                 MessageMeta(time: time)
@@ -387,22 +387,22 @@ struct ClosedPaymentRequestBubble: View {
             switch intent.status {
             case .executed:
                 switch intent.paymentKind {
-                case .withdrawal: label = "Withdrawal requested"
-                case .topUp: label = "Top-up sent"
-                default: label = "Paid"
+                case .withdrawal: label = L("payment_withdrawal_requested")
+                case .topUp: label = L("payment_top_up_sent")
+                default: label = L("payment_paid")
                 }
                 icon = "checkmark.circle.fill"
                 colour = Tokens.Chat.success
             case .confirmed:
-                label = "Processing…"
+                label = L("payment_processing")
                 icon = "hourglass"
                 colour = Tokens.Chat.meta
             case .cancelled:
-                label = "Payment cancelled"
+                label = L("payment_cancelled")
                 icon = "xmark.circle"
                 colour = Tokens.Chat.meta
             case .expired:
-                label = "Review expired"
+                label = L("payment_review_expired")
                 icon = "clock.badge.xmark"
                 colour = Tokens.Chat.meta
             default:
@@ -422,7 +422,7 @@ struct RecipientName: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 1) {
             HStack(spacing: 4) {
-                Text("to \(name)")
+                Text(L("payment_to", name.bidiIsolated))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Tokens.Chat.text)
                     .lineLimit(1)
@@ -430,7 +430,7 @@ struct RecipientName: View {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.system(size: 12))
                         .foregroundStyle(Tokens.Colour.brand)
-                        .accessibilityLabel("Verified business")
+                        .accessibilityLabel(L("payee_verified"))
                 }
             }
             if let summary, !summary.isEmpty {
@@ -450,6 +450,8 @@ struct PaymentReceiptBubble: View {
     let message: ChatMessage
     let time: String
     let tail: BubbleTail
+    /// Pays the same payee again; nil hides the button.
+    var onPayAgain: ((PayeeRef) -> Void)? = nil
 
     var body: some View {
         let fields = message.payloadFields
@@ -474,7 +476,7 @@ struct PaymentReceiptBubble: View {
 
                 if let recipient = fields["recipientDisplay"], !recipient.isEmpty {
                     if kind == .withdrawal {
-                        Text("to \(recipient)")
+                        Text(L("payment_to", recipient.bidiIsolated))
                             .font(.subheadline)
                             .foregroundStyle(Tokens.Chat.text)
                     } else {
@@ -488,27 +490,27 @@ struct PaymentReceiptBubble: View {
                     }
                 }
                 if let voucher = fields["voucherCodeMasked"], !voucher.isEmpty {
-                    Text("Voucher \(voucher)")
+                    Text(L("payment_voucher", voucher.bidiIsolated))
                         .font(.footnote)
                         .foregroundStyle(Tokens.Chat.meta)
                 }
                 if let fee = Double(fields["feeAmount"] ?? ""), fee > 0 {
-                    Text("\(Money.format(Double(fields["amount"] ?? ""))) + \(Money.format(fee)) fee")
+                    Text(L("payment_plus_fee", Money.format(Double(fields["amount"] ?? "")), Money.format(fee)))
                         .font(.footnote)
                         .foregroundStyle(Tokens.Chat.meta)
                 }
                 if kind == .withdrawal, let iban = fields["recipientCode"], !iban.isEmpty {
-                    Text("IBAN \(iban)")
+                    Text(L("payment_iban", iban.bidiIsolated))
                         .font(.footnote.monospaced())
                         .foregroundStyle(Tokens.Chat.meta)
                 }
                 if let balance = Double(fields["newBalance"] ?? "") {
-                    Text("New balance \(Money.format(balance))")
+                    Text(L("payment_new_balance", Money.format(balance)))
                         .font(.footnote)
                         .foregroundStyle(Tokens.Chat.meta)
                 }
                 if let left = Double(fields["voucherRemaining"] ?? "") {
-                    Text("Left on voucher \(Money.format(left))")
+                    Text(L("payment_voucher_left", Money.format(left)))
                         .font(.footnote)
                         .foregroundStyle(Tokens.Chat.meta)
                 }
@@ -523,7 +525,7 @@ struct PaymentReceiptBubble: View {
 
             HStack(alignment: .lastTextBaseline, spacing: 6) {
                 if let reference {
-                    Text("Ref \(reference)")
+                    Text(L("payment_ref", reference))
                         .font(.footnote.monospaced())
                         .foregroundStyle(Tokens.Chat.meta)
                         .textSelection(.enabled)
@@ -532,6 +534,23 @@ struct PaymentReceiptBubble: View {
                 MessageMeta(time: time)
             }
             .padding(.top, 2)
+
+            // WhatsApp's button under a payment message: the same payee again, amount filled in.
+            if let onPayAgain, let payee = PayeeRef(receipt: fields) {
+                Divider()
+                    .padding(.horizontal, -12)
+                    .padding(.top, 4)
+                Button {
+                    onPayAgain(payee)
+                } label: {
+                    Label(L("payment_pay_again"), systemImage: "arrow.counterclockwise")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Tokens.Chat.action)
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.top, 10)
@@ -544,7 +563,7 @@ struct PaymentReceiptBubble: View {
                 Button {
                     UIPasteboard.general.string = reference
                 } label: {
-                    Label("Copy reference", systemImage: "doc.on.doc")
+                    Label(L("review_copy_reference"), systemImage: "doc.on.doc")
                 }
             }
         }
@@ -562,7 +581,7 @@ struct PaymentReceivedBubble: View {
         let fields = message.payloadFields
 
         VStack(alignment: .leading, spacing: 3) {
-            Label("Payment received", systemImage: "arrow.down.circle.fill")
+            Label(L("payment_received"), systemImage: "arrow.down.circle.fill")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Tokens.Chat.success)
 
@@ -572,12 +591,12 @@ struct PaymentReceivedBubble: View {
                     .foregroundStyle(Tokens.Chat.text)
                     .padding(.top, 2)
                 if let from = fields["fromDisplay"], !from.isEmpty {
-                    Text("from \(from)")
+                    Text(L("payment_from", from.bidiIsolated))
                         .font(.subheadline)
                         .foregroundStyle(Tokens.Chat.text)
                 }
                 if let balance = Double(fields["newBalance"] ?? "") {
-                    Text("New balance \(Money.format(balance))")
+                    Text(L("payment_new_balance", Money.format(balance)))
                         .font(.footnote)
                         .foregroundStyle(Tokens.Chat.meta)
                 }
@@ -607,25 +626,25 @@ struct PaymentReceivedBubble: View {
 enum PaymentCopy {
     static func readyLabel(_ kind: PaymentKind) -> String {
         switch kind {
-        case .withdrawal: return "Withdrawal ready to review"
-        case .topUp: return "Top-up ready to review"
-        default: return "Payment ready to review"
+        case .withdrawal: return L("payment_ready_withdrawal")
+        case .topUp: return L("payment_ready_top_up")
+        default: return L("payment_ready")
         }
     }
 
     static func reviewAction(_ kind: PaymentKind) -> String {
         switch kind {
-        case .withdrawal: return "Review withdrawal"
-        case .topUp: return "Review top-up"
-        default: return "Review payment"
+        case .withdrawal: return L("payment_review_withdrawal")
+        case .topUp: return L("payment_review_top_up")
+        default: return L("payment_review")
         }
     }
 
     static func doneLabel(_ kind: PaymentKind, stage: String?) -> String {
         switch kind {
-        case .withdrawal: return stage == "COMPLETED" ? "Withdrawal complete" : "Withdrawal requested"
-        case .topUp: return "Top-up sent"
-        default: return "Payment sent"
+        case .withdrawal: return stage == "COMPLETED" ? L("payment_withdrawal_complete") : L("payment_withdrawal_requested")
+        case .topUp: return L("payment_top_up_sent")
+        default: return L("payment_sent")
         }
     }
 
@@ -859,6 +878,6 @@ struct RetryButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Not sent. Tap to retry")
+        .accessibilityLabel(L("chat_retry"))
     }
 }

@@ -44,7 +44,7 @@ struct PhoneEntryView: View {
                             .padding(.top, proxy.size.height * 0.075)
 
                         // MARK: Heading — left aligned, two lines.
-                        Text("Welcome to\nLychee Hello")
+                        Text(L("phone_title"))
                             .font(.system(size: 40, weight: .bold))
                             .foregroundStyle(Tokens.Colour.navy)
                             .lineSpacing(1)
@@ -53,7 +53,7 @@ struct PhoneEntryView: View {
                             .accessibilityAddTraits(.isHeader)
 
                         // MARK: Tagline.
-                        Text("Chat. Pay. Simply.")
+                        Text(L("phone_tagline"))
                             .font(.system(size: 19, weight: .regular))
                             .foregroundStyle(Tokens.Colour.textSecondary)
                             .padding(.top, Tokens.Spacing.md)
@@ -63,7 +63,7 @@ struct PhoneEntryView: View {
                         Spacer(minLength: proxy.size.height * 0.115)
 
                         // MARK: Form.
-                        Text("Mobile number")
+                        Text(L("phone_label"))
                             .font(.system(size: 15, weight: .regular))
                             .foregroundStyle(Tokens.Colour.navy)
                             .padding(.bottom, Tokens.Spacing.md)
@@ -71,7 +71,7 @@ struct PhoneEntryView: View {
                         phoneField
 
                         LHPrimaryButton(
-                            title: "Continue",
+                            title: L("common_continue"),
                             trailingSystemImage: "arrow.right",
                             isLoading: model.isSubmitting,
                             isEnabled: model.canSubmit
@@ -128,18 +128,29 @@ struct PhoneEntryView: View {
                 // Reference field height ≈ 145/1844 of a 1844pt canvas → ~66pt. Note the field is
                 // deliberately *taller* than the button below it.
                 .frame(minHeight: 66)
-                .accessibilityLabel("Mobile number")
+                .accessibilityLabel(L("phone_label"))
         }
         .background(Tokens.Colour.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        // A phone number reads left to right in Arabic too: "+970 | 59X XXX XXX", never mirrored.
+        .environment(\.layoutDirection, .leftToRight)
         // Soft, diffused, slightly offset downward — the "floating card" effect. No border.
         .shadow(color: Tokens.Colour.navy.opacity(0.07), radius: 16, x: 0, y: 8)
+    }
+
+    /// A country's name in the app's language.
+    private static func countryName(_ country: PhoneEntryModel.Country) -> String {
+        switch country.isoCode.uppercased() {
+        case "PS": return L("country_ps")
+        case "IL": return L("country_il")
+        default: return country.name
+        }
     }
 
     private var countrySelector: some View {
         Menu {
             ForEach(PhoneEntryModel.supportedCountries, id: \.dialCode) { country in
-                Button("\(country.dialCode)  \(country.name)") { model.country = country }
+                Button("\(country.dialCode)  \(Self.countryName(country))") { model.country = country }
             }
         } label: {
             HStack(spacing: Tokens.Spacing.sm) {
@@ -154,9 +165,9 @@ struct PhoneEntryView: View {
             // Artwork is smaller than this, but the tap target must not be.
             .frame(minHeight: Tokens.Hit.minimum)
         }
-        .accessibilityLabel("Country code")
+        .accessibilityLabel(L("phone_country_code_short"))
         .accessibilityValue(model.country.dialCode)
-        .accessibilityHint("Opens the country list")
+        .accessibilityHint(L("phone_country_hint"))
     }
 
     // MARK: - Verification row
@@ -166,7 +177,7 @@ struct PhoneEntryView: View {
             ShieldCheckIcon()
                 // Nudged to sit optically level with the first text line.
                 .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 3 }
-            Text("We'll send you a one-time verification code")
+            Text(L("phone_note"))
                 .font(.system(size: 14, weight: .regular))
                 .foregroundStyle(Tokens.Colour.navy)
                 .fixedSize(horizontal: false, vertical: true)

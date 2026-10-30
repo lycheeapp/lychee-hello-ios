@@ -70,34 +70,34 @@ public enum APIError: Error, Sendable {
     public var userMessage: String {
         switch self {
         case .offline:
-            return "You appear to be offline. Check your connection and try again."
+            return L("error_offline")
         case .timedOut:
-            return "That took too long. Please try again."
+            return L("error_timed_out")
         case .unauthorized:
-            return "Your session has expired. Please sign in again."
+            return L("error_session_expired")
         case let .api(code, message, _):
             if let message, !message.isEmpty { return message }
             return APIError.fallbackMessage(for: code)
         case .decoding, .transport:
-            return "Something went wrong. Please try again."
+            return L("error_generic")
         }
     }
 
     private static func fallbackMessage(for code: HelloErrorCode) -> String {
         switch code {
-        case .invalidPhoneNumber:      return "That phone number doesn't look right."
-        case .invalidVerificationCode: return "That code isn't valid. Please check and try again."
-        case .rateLimited:             return "Too many attempts. Please wait a moment."
-        case .walletNotActive:         return "Your wallet is being activated. Payments will be available once your wallet is active."
-        case .invalidMessageFormat:    return "Send a payment as \"payee amount\", or \"payee voucher amount\"."
-        case .recipientNotFound:       return "We couldn't find that payee."
-        case .invalidAmount:           return "That amount isn't valid."
-        case .voucherNotUsable:        return "That voucher can't be used for this payment."
-        case .paymentAlreadyPending:   return "You already have a payment waiting for confirmation."
-        case .paymentIntentExpired:    return "This payment expired before it was confirmed."
+        case .invalidPhoneNumber:      return L("error_invalid_phone_number")
+        case .invalidVerificationCode: return L("error_invalid_code")
+        case .rateLimited:             return L("error_rate_limited")
+        case .walletNotActive:         return L("error_wallet_not_active")
+        case .invalidMessageFormat:    return L("error_message_format")
+        case .recipientNotFound:       return L("error_recipient_not_found")
+        case .invalidAmount:           return L("error_invalid_amount")
+        case .voucherNotUsable:        return L("error_voucher_not_usable")
+        case .paymentAlreadyPending:   return L("error_payment_pending")
+        case .paymentIntentExpired:    return L("error_payment_expired")
         case .paymentIntentNotActionable, .paymentIntentNotFound:
-                                       return "This payment is no longer available."
-        default:                       return "Something went wrong. Please try again."
+                                       return L("error_payment_unavailable")
+        default:                       return L("error_generic")
         }
     }
 }

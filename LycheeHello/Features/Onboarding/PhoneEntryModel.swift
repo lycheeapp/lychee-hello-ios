@@ -77,7 +77,7 @@ public final class PhoneEntryModel {
         } catch let error as APIError {
             errorMessage = error.userMessage
         } catch {
-            errorMessage = "Something went wrong. Please try again."
+            errorMessage = L("error_generic")
         }
     }
 }

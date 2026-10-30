@@ -1,0 +1,297 @@
+/* Lychee Hello — Arabic strings. Keys match the Android app's string resources. */
+
+/* Common */
+"app_name" = "Lychee Hello";
+"common_back" = "رجوع";
+"common_cancel" = "إلغاء";
+"common_clear" = "مسح";
+"common_continue" = "متابعة";
+"common_done" = "تم";
+"common_ok" = "حسناً";
+"common_try_again" = "حاول مرة أخرى";
+"day_today" = "اليوم";
+"day_yesterday" = "أمس";
+
+/* Tabs */
+"tab_chats" = "الدردشات";
+"tab_stores" = "المتاجر";
+"tab_settings" = "الإعدادات";
+
+/* Welcome (legacy) */
+
+/* Onboarding */
+"phone_title" = "أهلاً بك في\nLychee Hello";
+"phone_tagline" = "دردش. ادفع. ببساطة.";
+"phone_label" = "رقم الجوال";
+"phone_country_code" = "رمز الدولة، %1$@";
+"phone_note" = "سنرسل إليك رمز تحقق لمرة واحدة";
+"country_ps" = "فلسطين";
+"country_il" = "إسرائيل";
+"otp_title" = "أدخل الرمز";
+"otp_sent_to" = "أرسلنا رمزاً من %1$d أرقام إلى %2$@";
+"otp_verifying" = "جارٍ التحقق…";
+"otp_resend" = "أرسل رمزاً جديداً";
+"otp_resend_in" = "يمكنك طلب رمز جديد بعد %1$d ثانية";
+"otp_code_label" = "رمز التحقق";
+"otp_error_resend" = "تعذّر إعادة إرسال الرمز. يرجى المحاولة مرة أخرى.";
+"profile_title" = "بماذا\nنناديك؟";
+"profile_subtitle" = "هذا هو الاسم الذي يراه الآخرون عندما تدفع لهم.";
+"profile_first_name" = "الاسم الأول";
+"profile_last_name" = "اسم العائلة";
+"profile_error_save" = "تعذّر حفظ بياناتك. يرجى المحاولة مرة أخرى.";
+
+/* Errors */
+"error_generic" = "حدث خطأ ما. يرجى المحاولة مرة أخرى.";
+"error_no_connection" = "لا يوجد اتصال. تحقّق من الشبكة وحاول مرة أخرى.";
+"error_invalid_phone" = "أدخل رقم هاتف صحيحاً.";
+"error_offline" = "يبدو أنك غير متصل. تحقّق من اتصالك وحاول مرة أخرى.";
+"error_timed_out" = "استغرق ذلك وقتاً طويلاً. يرجى المحاولة مرة أخرى.";
+"error_session_expired" = "انتهت جلستك. يرجى تسجيل الدخول مرة أخرى.";
+"error_invalid_phone_number" = "يبدو أن رقم الهاتف هذا غير صحيح.";
+"error_invalid_code" = "هذا الرمز غير صالح. يرجى التحقق والمحاولة مرة أخرى.";
+"error_rate_limited" = "محاولات كثيرة جداً. يرجى الانتظار قليلاً.";
+"error_wallet_not_active" = "جارٍ تفعيل محفظتك. ستتوفر المدفوعات بمجرد تفعيل محفظتك.";
+"error_message_format" = "أرسل الدفعة بصيغة \"المستفيد المبلغ\" أو \"المستفيد القسيمة المبلغ\".";
+"error_recipient_not_found" = "لم نتمكن من العثور على هذا المستفيد.";
+"error_invalid_amount" = "هذا المبلغ غير صالح.";
+"error_voucher_not_usable" = "لا يمكن استخدام هذه القسيمة لهذه الدفعة.";
+"error_payment_pending" = "لديك بالفعل دفعة بانتظار التأكيد.";
+"error_payment_expired" = "انتهت صلاحية هذه الدفعة قبل تأكيدها.";
+"error_payment_unavailable" = "هذه الدفعة لم تعد متاحة.";
+
+/* Chat */
+"chat_subtitle" = "مساعد المدفوعات";
+"chat_typing" = "يكتب…";
+"chat_notice" = "لا تتم المدفوعات في هذه الدردشة إلا بعد مراجعتها وتأكيدها.";
+"chat_empty_hi" = "مرحباً 👋";
+"chat_empty_hi_name" = "مرحباً %1$@ 👋";
+"chat_empty_intro" = "ادفع لأي شخص بإرسال رسالة:";
+"chat_example_balance_command" = "المستفيد المبلغ";
+"chat_example_balance_meaning" = "من رصيدك";
+"chat_example_voucher_command" = "المستفيد القسيمة المبلغ";
+"chat_example_voucher_meaning" = "بقسيمة";
+"chat_example_check_command" = "رصيد";
+"chat_example_check_meaning" = "رصيدك";
+"chat_empty_outro" = "أو اضغط + للدفع بخطوات.";
+"chat_balance_available" = "الرصيد المتاح";
+"chat_balance_activating" = "جارٍ تفعيل المحفظة";
+"chat_balance_show" = "إظهار الرصيد";
+"chat_balance_hide" = "إخفاء الرصيد";
+"chat_attach" = "خيارات الدفع";
+"chat_composer_placeholder" = "رسالة";
+"chat_send" = "إرسال";
+"chat_scroll_latest" = "الانتقال إلى آخر رسالة";
+"chat_message_copied" = "تم نسخ الرسالة";
+"chat_retry" = "لم تُرسل. اضغط لإعادة المحاولة";
+"chat_tick_sending" = "جارٍ الإرسال";
+"chat_tick_sent" = "تم الإرسال";
+"chat_tick_read" = "تمت القراءة";
+"chat_a11y_you" = "أنت";
+"chat_a11y_lychee" = "Lychee";
+"chat_a11y_sending" = "جارٍ الإرسال";
+"chat_a11y_sent" = "تم الإرسال";
+"chat_a11y_read" = "تمت القراءة";
+"chat_a11y_not_sent" = "لم تُرسل";
+"chat_hint_not_found" = "لا يوجد مستفيد بالرمز %1$@";
+"chat_error_load" = "تعذّر تحميل الدردشة.";
+"chat_error_send" = "تعذّر إرسال الرسالة.";
+"chat_error_payment" = "تعذّر بدء هذه الدفعة.";
+"chat_error_withdrawal" = "تعذّر بدء عملية السحب.";
+"chat_error_top_up" = "تعذّر بدء عملية الشحن.";
+"attach_pay_balance" = "الدفع من الرصيد";
+"attach_voucher" = "استخدام قسيمة";
+"attach_balance" = "الرصيد";
+"attach_withdraw" = "سحب";
+"attach_top_up" = "شحن";
+
+/* Payment cards */
+"payment_to" = "إلى %1$@";
+"payment_from" = "من %1$@";
+"payment_iban" = "IBAN ‏%1$@";
+"payment_voucher" = "القسيمة %1$@";
+"payment_plus_fee" = "%1$@ + رسوم %2$@";
+"payment_ref" = "المرجع %1$@";
+"payment_new_balance" = "الرصيد الجديد %1$@";
+"payment_voucher_left" = "المتبقي في القسيمة %1$@";
+"payment_reference_copied" = "تم نسخ المرجع";
+"payment_review_closed" = "أُغلقت مراجعة الدفعة";
+"payment_paid" = "مدفوعة";
+"payment_processing" = "جارٍ المعالجة…";
+"payment_cancelled" = "أُلغيت الدفعة";
+"payment_review_expired" = "انتهت مهلة المراجعة";
+"payment_ready" = "الدفعة جاهزة للمراجعة";
+"payment_ready_withdrawal" = "السحب جاهز للمراجعة";
+"payment_ready_top_up" = "الشحن جاهز للمراجعة";
+"payment_review" = "مراجعة الدفعة";
+"payment_review_withdrawal" = "مراجعة السحب";
+"payment_review_top_up" = "مراجعة الشحن";
+"payment_sent" = "تم إرسال الدفعة";
+"payment_withdrawal_requested" = "تم طلب السحب";
+"payment_withdrawal_complete" = "اكتمل السحب";
+"payment_top_up_sent" = "تم إرسال الشحن";
+"payment_received" = "دفعة مستلمة";
+"payment_pay_again" = "ادفع مرة أخرى";
+"payment_recipient" = "المستفيد";
+"payee_verified" = "نشاط تجاري موثّق";
+"payee_kind_taxi" = "تاكسي";
+"payee_kind_bus_operator" = "مشغّل حافلات";
+"payee_kind_playground" = "ملعب أطفال";
+"payee_kind_business" = "نشاط تجاري";
+"payee_kind_store" = "متجر";
+"payee_kind_branch" = "فرع متجر";
+"payee_kind_bus" = "حافلة";
+"payee_kind_person" = "مستخدم Lychee";
+
+/* Review sheet */
+"review_bank_pays" = "يدفع البنك";
+"review_customer" = "العميل";
+"review_confirm_payment" = "تأكيد الدفعة";
+"review_confirm_withdrawal" = "تأكيد السحب";
+"review_confirm_top_up" = "تأكيد الشحن";
+"review_cancel_payment" = "إلغاء الدفعة";
+"review_cancel_withdrawal" = "إلغاء السحب";
+"review_cancel_top_up" = "إلغاء الشحن";
+"review_copy_reference" = "نسخ المرجع";
+"review_error_confirm" = "تعذّر إتمام الدفعة.";
+"review_error_cancel" = "تعذّر إلغاء هذه الدفعة.";
+
+/* Guided forms */
+"form_title_balance" = "الدفع من الرصيد";
+"form_title_voucher" = "الدفع بقسيمة";
+"form_title_withdraw" = "السحب إلى البنك";
+"form_title_top_up" = "شحن رصيد عميل";
+"form_payee" = "رمز المستفيد أو رقم هاتفه";
+"form_iban_hint" = "الحساب البنكي الذي سيُحوَّل إليه المال. يجب أن يكون باسمك.";
+"form_customer_phone" = "رقم جوال العميل";
+"form_amount_optional" = "المبلغ (اختياري)";
+"form_withdraw_hint" = "اتركه فارغاً لسحب كامل رصيدك المتاح. قد تُطبَّق رسوم، وستراها قبل التأكيد.";
+"form_pin" = "رمز الشحن السري";
+"form_pin_hint" = "يُتحقَّق من رمزك السري ولا يُحفظ أو يظهر في الدردشة أبداً.";
+
+/* Pay sheet */
+"pay_paying" = "أنت تدفع إلى";
+"pay_source_balance" = "من الرصيد";
+"pay_source_voucher" = "قسيمة";
+"pay_wallet_not_active" = "محفظتك غير مفعّلة بعد — يمكنك الدفع بقسيمة.";
+"pay_amount" = "المبلغ";
+"pay_voucher_code" = "رمز القسيمة";
+"pay_voucher_typing" = "تكتب الآن";
+"pay_delete" = "حذف";
+"pay_review" = "مراجعة الدفعة";
+"pay_nothing_until_confirm" = "لن يُدفع شيء قبل أن تؤكد.";
+
+/* Stores */
+"stores_title" = "المتاجر";
+"stores_search" = "ابحث عن متجر أو رمز";
+"stores_pay_again" = "ادفع مرة أخرى";
+"stores_all" = "كل المتاجر";
+"stores_tap_to_pay" = "اضغط للدفع لهذا المتجر";
+"stores_none_title" = "لا توجد متاجر بعد";
+"stores_none_body" = "ستظهر هنا المتاجر التي يمكنك الدفع لها.";
+"stores_no_match_title" = "لا توجد نتائج";
+"stores_no_match_body" = "لا يوجد متجر يطابق \"%1$@\".";
+"stores_error_title" = "تعذّر تحميل المتاجر";
+"stores_error_load" = "تعذّر تحميل المتاجر.";
+
+/* History and receipts */
+"history_title" = "سجل المدفوعات";
+"history_search" = "ابحث بالاسم أو الرمز أو المرجع";
+"history_paid" = "مدفوعة";
+"history_received" = "مستلمة";
+"history_kind_voucher" = "مدفوعة بقسيمة";
+"history_kind_withdrawal" = "سحب";
+"history_kind_top_up" = "شحن";
+"history_empty_title" = "لا توجد مدفوعات بعد";
+"history_empty_body" = "ستظهر هنا المدفوعات التي ترسلها وتستلمها.";
+"history_no_match_title" = "لا توجد نتائج";
+"history_no_match_body" = "لا توجد دفعة تطابق \"%1$@\".";
+"history_error_title" = "تعذّر تحميل السجل";
+"history_error_load" = "تعذّر تحميل سجل مدفوعاتك.";
+"history_share_image" = "صورة";
+"history_share_pdf" = "PDF";
+"history_share_title" = "مشاركة الإيصال";
+"history_pay_again" = "ادفع لـ %1$@ مرة أخرى";
+"receipt_title" = "إيصال دفع";
+"receipt_to" = "إلى %1$@";
+"receipt_from" = "من %1$@";
+"receipt_date" = "التاريخ";
+"receipt_reference" = "المرجع";
+"receipt_payee_code" = "رمز المستفيد";
+"receipt_iban" = "IBAN";
+"receipt_amount" = "المبلغ";
+"receipt_fee" = "الرسوم";
+"receipt_total" = "الإجمالي";
+"receipt_voucher" = "القسيمة";
+"receipt_new_balance" = "الرصيد الجديد";
+"receipt_voucher_left" = "المتبقي في القسيمة";
+"receipt_footer" = "Lychee Hello · احتفظ بهذا الإيصال في سجلاتك";
+
+/* Settings and accounts */
+"settings_title" = "الإعدادات";
+"settings_history_subtitle" = "إيصالات كل ما دفعته واستلمته";
+"settings_language" = "اللغة";
+"settings_language_system" = "لغة النظام (%1$@)";
+"settings_language_note" = "\"لغة النظام\" تتبع لغة هاتفك، وكذلك ردود Lychee في الدردشة.";
+"settings_account" = "الحساب والملف الشخصي";
+"settings_account_subtitle" = "البيانات الشخصية ورقم الهاتف";
+"settings_privacy" = "الخصوصية والأمان";
+"settings_privacy_subtitle" = "الحسابات المحظورة والأجهزة المتصلة";
+"settings_notifications" = "الإشعارات";
+"settings_notifications_subtitle" = "تنبيهات الرسائل والمدفوعات";
+"settings_appearance" = "المظهر";
+"settings_appearance_subtitle" = "الوضع الفاتح";
+"settings_biometric" = "الدخول بالبصمة";
+"settings_biometric_subtitle" = "استخدم البصمة أو التعرّف على الوجه";
+"settings_help" = "المساعدة والدعم";
+"settings_help_subtitle" = "احصل على المساعدة في Lychee Hello";
+"settings_about" = "حول Lychee Hello";
+"settings_about_subtitle" = "الخصوصية والشروط ومعلومات التطبيق";
+"settings_log_out" = "تسجيل الخروج";
+"settings_log_out_confirm" = "تسجيل الخروج من Lychee Hello؟";
+"settings_switching" = "جارٍ تبديل الحساب…";
+"settings_switch_footer" = "تُدفع المبالغ من الحساب الذي سجّلت الدخول به.";
+"settings_switch_to" = "التبديل إلى %1$@";
+"settings_switch_business" = "الحساب التجاري";
+"settings_switch_personal" = "الحساب الشخصي";
+"settings_switch_failed" = "تعذّر تبديل الحساب";
+"settings_switch_failed_body" = "تعذّر تبديل الحساب. يرجى المحاولة مرة أخرى.";
+"account_verified" = "حساب Lychee موثّق";
+"account_personal" = "حساب شخصي";
+"account_business" = "حساب تجاري";
+"account_business_code" = "حساب تجاري · %1$@";
+"account_chooser_title" = "أي حساب؟";
+"account_chooser_body" = "لهذا الرقم أكثر من حساب على Lychee. تُدفع المبالغ من الحساب الذي تختاره، ويمكنك التبديل في أي وقت من الإعدادات.";
+"account_chooser_business" = "تجاري";
+"account_chooser_personal" = "شخصي";
+"account_signed_in" = "مسجّل الدخول";
+
+/* iOS only */
+"attach_check_balance" = "عرض الرصيد";
+"chat_load_earlier" = "تحميل الرسائل السابقة";
+"common_close" = "إغلاق";
+"common_copy" = "نسخ";
+"common_something_went_wrong" = "حدث خطأ ما";
+"common_working" = "جارٍ العمل";
+"form_pay_to" = "الدفع إلى";
+"form_pin_short" = "الرمز السري";
+"form_voucher_placeholder" = "رمز من %d خانات";
+"otp_didnt_get_it" = "لم يصلك الرمز؟";
+"otp_resend_in_short" = "إعادة الإرسال بعد %d ث";
+"otp_resend_short" = "إعادة إرسال الرمز";
+"pay_source" = "الدفع من";
+"phone_country_code_short" = "رمز الدولة";
+"phone_country_hint" = "يفتح قائمة الدول";
+"profile_error_name" = "تعذّر حفظ هذا الاسم. جرّب إضافة اسم الأب أو كتابة مختلفة.";
+"profile_subtitle_ios" = "هكذا سيظهر اسمك على Lychee.";
+"review_bank" = "البنك";
+"review_biometric_note" = "سيُطلب منك التأكيد باستخدام %@.";
+"review_biometric_reason" = "أكّد دفعتك بقيمة %@";
+"review_completing" = "جارٍ إتمام دفعتك…";
+"review_dont_close" = "يرجى عدم إغلاق التطبيق.";
+"review_not_completed" = "لم تكتمل هذه الدفعة.";
+"review_payment" = "دفعة";
+"review_payment_complete" = "اكتملت الدفعة";
+"review_still_confirming" = "ما زلنا نؤكد هذه الدفعة. راجع الدردشة بعد قليل.";
+"review_top_up_complete" = "اكتمل الشحن";
+"review_waiting" = "بانتظار التأكيد…";
+"settings_biometric_use" = "استخدم %@";

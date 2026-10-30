@@ -128,7 +128,7 @@ public final class OtpEntryModel {
             errorMessage = error.userMessage
             code = ""
         } catch {
-            errorMessage = "Something went wrong. Please try again."
+            errorMessage = L("error_generic")
             code = ""
         }
     }
@@ -142,7 +142,7 @@ public final class OtpEntryModel {
         } catch let error as APIError {
             errorMessage = error.userMessage
         } catch {
-            errorMessage = "Couldn't resend the code. Please try again."
+            errorMessage = L("otp_error_resend")
         }
     }
 }

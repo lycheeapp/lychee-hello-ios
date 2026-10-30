@@ -20,10 +20,10 @@ struct PaymentFormSheet: View {
 
         var title: String {
             switch self {
-            case .balance: return "Pay from balance"
-            case .voucher: return "Use a voucher"
-            case .withdraw: return "Withdraw to bank"
-            case .topUp: return "Top up a customer"
+            case .balance: return L("form_title_balance")
+            case .voucher: return L("attach_voucher")
+            case .withdraw: return L("form_title_withdraw")
+            case .topUp: return L("form_title_top_up")
             }
         }
 
@@ -96,10 +96,10 @@ struct PaymentFormSheet: View {
             .keyboardDoneToolbar()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(L("common_cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Continue") {
+                    Button(L("common_continue")) {
                         if let submission {
                             onSubmit(submission)
                         }
@@ -113,14 +113,14 @@ struct PaymentFormSheet: View {
 
     @ViewBuilder
     private var paymentFields: some View {
-        Section("Pay to") {
-            TextField("Payee code or phone number", text: $payee)
+        Section(L("form_pay_to")) {
+            TextField(L("form_payee"), text: $payee)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.characters)
         }
         if mode.needsVoucher {
-            Section("Voucher") {
-                TextField("\(voucherLength)-character code", text: $voucherCode)
+            Section(L("receipt_voucher")) {
+                TextField(L("form_voucher_placeholder", voucherLength), text: $voucherCode)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.characters)
                     .onChange(of: voucherCode) { _, value in
@@ -139,31 +139,31 @@ struct PaymentFormSheet: View {
                 .textInputAutocapitalization(.characters)
                 .font(.body.monospaced())
         } header: {
-            Text("IBAN")
+            Text(L("receipt_iban"))
         } footer: {
-            Text("The bank account the money goes to. It must be in your name.")
+            Text(L("form_iban_hint"))
         }
-        amountSection(footer: "Leave empty to withdraw your whole available balance. A fee may apply; you will see it before you confirm.")
+        amountSection(footer: L("form_withdraw_hint"))
     }
 
     @ViewBuilder
     private var topUpFields: some View {
-        Section("Customer") {
-            TextField("Mobile number", text: $phone)
+        Section(L("review_customer")) {
+            TextField(L("form_customer_phone"), text: $phone)
                 .keyboardType(.phonePad)
                 .textContentType(.telephoneNumber)
         }
         amountSection(footer: nil)
         Section {
-            SecureField("PIN", text: $pin)
+            SecureField(L("form_pin_short"), text: $pin)
                 .keyboardType(.numberPad)
                 .onChange(of: pin) { _, value in
                     pin = String(value.filter(\.isNumber).prefix(8))
                 }
         } header: {
-            Text("Your top-up PIN")
+            Text(L("form_pin"))
         } footer: {
-            Text("Your PIN is checked and never stored or shown in the chat.")
+            Text(L("form_pin_hint"))
         }
     }
 
@@ -174,7 +174,7 @@ struct PaymentFormSheet: View {
                 TextField("0", text: $amountText).keyboardType(.decimalPad)
             }
         } header: {
-            Text("Amount")
+            Text(L("receipt_amount"))
         } footer: {
             if let footer {
                 Text(footer)

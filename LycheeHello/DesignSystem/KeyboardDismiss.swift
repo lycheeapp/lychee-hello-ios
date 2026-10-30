@@ -31,7 +31,7 @@ private struct KeyboardDoneToolbar: ViewModifier {
         content.toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("Done") { KeyboardDismisser.dismiss() }
+                Button(L("common_done")) { KeyboardDismisser.dismiss() }
                     .font(Tokens.Typography.callout.weight(.semibold))
                     .foregroundStyle(Tokens.Colour.brand)
             }

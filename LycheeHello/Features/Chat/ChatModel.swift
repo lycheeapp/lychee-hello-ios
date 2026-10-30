@@ -35,7 +35,20 @@ public final class ChatModel {
     /// stranded: the intent blocks every new payment while being unreachable.
     public private(set) var resumableIntent: PaymentIntent?
 
+    /// Bound to the composer; the view reports each change with `draftChanged()`.
     public var draft: String = ""
+
+    /// Who the first word of the draft names, once the server has said — "Rio Taxi ✓" over the
+    /// keyboard while the person is still typing "RIO1 50". Nil while there is nothing to say.
+    public private(set) var payeeHint: PayeeHint?
+
+    private var hintTask: Task<Void, Never>?
+    private var pendingHintKey: String?
+    /// Lookups already answered, by upper-cased word: retyping a payee costs no request.
+    private var lookups: [String: PayeeLookup] = [:]
+
+    /// How long typing pauses before the payee is looked up.
+    static let hintDelay: Duration = .milliseconds(350)
 
     /// Bumped on every send, so the view can tie a haptic to it.
     public private(set) var sendCount = 0
@@ -89,7 +102,7 @@ public final class ChatModel {
             CrashReporter.recordAPIFailure(endpoint: "conversations/general", error: error)
             errorMessage = error.userMessage
         } catch {
-            errorMessage = "Couldn't load your chat."
+            errorMessage = L("chat_error_load")
         }
     }
 
@@ -239,6 +252,8 @@ public final class ChatModel {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, conversationId != nil, !isSending else { return }
         draft = ""
+        hintTask?.cancel()
+        payeeHint = nil
         await send(text: text)
     }
 
@@ -290,7 +305,7 @@ public final class ChatModel {
     /// Quick-action form path. The server composes the canonical command, so this cannot diverge
     /// from what free text accepts.
     public func sendPaymentForm(payee: String, voucherCode: String?, amount: Double) async {
-        await sendForm(endpoint: "messages(form)", fallback: "Couldn't start that payment.") { repository, conversationId, clientMessageId in
+        await sendForm(endpoint: "messages(form)", fallback: L("chat_error_payment")) { repository, conversationId, clientMessageId in
             try await repository.sendPaymentForm(
                 conversationId: conversationId,
                 payee: payee,
@@ -304,7 +319,7 @@ public final class ChatModel {
     /// "Withdraw to bank". The server composes the WhatsApp command `<IBAN> [amount]`; a nil amount
     /// withdraws the whole available balance. Nothing is held until the review card is confirmed.
     public func sendWithdrawal(iban: String, amount: Double?) async {
-        await sendForm(endpoint: "messages(withdrawal)", fallback: "Couldn't start that withdrawal.") { repository, conversationId, clientMessageId in
+        await sendForm(endpoint: "messages(withdrawal)", fallback: L("chat_error_withdrawal")) { repository, conversationId, clientMessageId in
             try await repository.sendWithdrawalForm(
                 conversationId: conversationId, iban: iban, amount: amount, clientMessageId: clientMessageId)
         }
@@ -313,11 +328,19 @@ public final class ChatModel {
     /// An operator's top-up for a customer. Never drawn optimistically: the message carries the PIN,
     /// and the server's copy — the only one shown — has it redacted.
     public func sendTopUp(recipientPhone: String, amount: Double, pin: String) async {
-        await sendForm(endpoint: "messages(topup)", fallback: "Couldn't start that top-up.") { repository, conversationId, clientMessageId in
+        await sendForm(endpoint: "messages(topup)", fallback: L("chat_error_top_up")) { repository, conversationId, clientMessageId in
             try await repository.sendTopUpForm(
                 conversationId: conversationId, recipientPhone: recipientPhone, amount: amount, pin: pin,
                 clientMessageId: clientMessageId)
         }
+    }
+
+    /// Pays a payee the app already knows — a store from the directory, a "pay again" shortcut — as
+    /// the guided form does: the server composes the command, and the review card follows in the
+    /// chat. Works before the chat has loaded, so the Stores tab can pay straight away.
+    public func pay(_ payee: PayeeRef, voucherCode: String?, amount: Double) async {
+        let voucher = voucherCode?.trimmingCharacters(in: .whitespaces)
+        await sendPaymentForm(payee: payee.code, voucherCode: voucher?.isEmpty == false ? voucher : nil, amount: amount)
     }
 
     /// The shared form path: no optimistic bubble (the user did not type a message), and the
@@ -327,7 +350,14 @@ public final class ChatModel {
         fallback: String,
         _ send: (HelloRepositoryProtocol, String, String) async throws -> SendMessageResult
     ) async {
-        guard let conversationId, !isSending else { return }
+        guard !isSending else { return }
+        if conversationId == nil {
+            conversationId = try? await repository.generalConversation().id
+        }
+        guard let conversationId else {
+            errorMessage = fallback
+            return
+        }
         isSending = true
         defer {
             isSending = false
@@ -402,4 +432,52 @@ public final class ChatModel {
     }
 
     public func dismissError() { errorMessage = nil }
+
+    // MARK: - Payee hint
+
+    /// Looks up the draft's first word a moment after the person stops typing it. Read-only and
+    /// best-effort: a failed lookup shows nothing, and the payment itself is checked properly.
+    public func draftChanged() {
+        guard let word = PayeeHints.candidate(draft) else {
+            hintTask?.cancel()
+            payeeHint = nil
+            return
+        }
+        let key = word.uppercased()
+        if let known = lookups[key] {
+            hintTask?.cancel()
+            payeeHint = hint(for: key, lookup: known, draft: draft)
+            return
+        }
+        // Still typing after the payee ("RIO1 5", "RIO1 50"): the lookup under way answers it.
+        if hintTask != nil, pendingHintKey == key { return }
+        hintTask?.cancel()
+        pendingHintKey = key
+        if payeeHint?.payee != key { payeeHint = nil }
+        hintTask = Task { [weak self, repository] in
+            try? await Task.sleep(for: ChatModel.hintDelay)
+            var lookup: PayeeLookup?
+            if !Task.isCancelled {
+                lookup = try? await repository.lookupPayee(word)
+            }
+            guard let self else { return }
+            // Finished either way: a failed lookup must not stop the next one for this word.
+            if self.pendingHintKey == key { self.pendingHintKey = nil }
+            guard !Task.isCancelled, let lookup else { return }
+            self.lookups[key] = lookup
+            if PayeeHints.candidate(self.draft)?.uppercased() == key {
+                self.payeeHint = self.hint(for: key, lookup: lookup, draft: self.draft)
+            }
+        }
+    }
+
+    private func hint(for key: String, lookup: PayeeLookup, draft: String) -> PayeeHint? {
+        if lookup.found {
+            return PayeeHint(payee: key, found: true, name: lookup.name, code: lookup.code,
+                             type: lookup.type, category: lookup.category)
+        }
+        // A number nobody's business answers to is most likely a person: say nothing either way.
+        if PayeeHints.isPhone(key) { return nil }
+        return PayeeHints.hasMore(draft) ? PayeeHint(payee: key, found: false) : nil
+    }
 }

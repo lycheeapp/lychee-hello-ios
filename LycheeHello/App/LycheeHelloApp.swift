@@ -6,10 +6,19 @@ struct LycheeHelloApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var coordinator = SessionCoordinator.shared
     @Environment(\.scenePhase) private var scenePhase
+    /// The app's language: the phone's unless Settings pins one. Changing it rebuilds the screens.
+    @AppStorage(AppLanguage.storageKey) private var languageRaw = AppLanguage.system.rawValue
+
+    init() {
+        AppLanguage.applyToUIKit()
+    }
 
     var body: some Scene {
         WindowGroup {
             RootView()
+                .modifier(AppLanguageEnvironment(language: AppLanguage(rawValue: languageRaw) ?? .system))
+                // Every string is read when its view is built: a new identity rebuilds them all.
+                .id(languageRaw)
                 .environment(coordinator)
                 .task { await coordinator.start() }
                 .onChange(of: scenePhase) { _, phase in
@@ -103,4 +112,21 @@ struct PendingVerification: Identifiable, Hashable {
     let resendAfterSeconds: Int
 
     var id: String { phoneNumber }
+}
+
+/// Puts a pinned language into SwiftUI's environment: right-to-left for Arabic, and its dates. A
+/// phone-chosen language needs nothing — iOS already lays the app out in it.
+private struct AppLanguageEnvironment: ViewModifier {
+    let language: AppLanguage
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if language == .system {
+            content
+        } else {
+            content
+                .environment(\.layoutDirection, AppLanguage.layoutDirection)
+                .environment(\.locale, AppLanguage.locale)
+        }
+    }
 }

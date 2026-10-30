@@ -179,7 +179,9 @@ public actor APIClient {
         if let token = await tokenStore.token() {
             request.setValue(token, forHTTPHeaderField: "Authorization-Token")
         }
-        request.setValue(Locale.preferredLanguages.first ?? "en", forHTTPHeaderField: "Accept-Language")
+        // The app's language — the phone's unless Settings pins one — so the server's replies and
+        // error messages are in the language the screens are in.
+        request.setValue(AppLanguage.effectiveTag, forHTTPHeaderField: "Accept-Language")
 
         // Signed last: the signature binds the final body bytes.
         if let signed = RequestSigner.sign(method: method, url: url, body: body) {
