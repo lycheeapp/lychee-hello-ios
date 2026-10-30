@@ -239,7 +239,10 @@
 "settings_notifications" = "الإشعارات";
 "settings_notifications_subtitle" = "تنبيهات الرسائل والمدفوعات";
 "settings_appearance" = "المظهر";
-"settings_appearance_subtitle" = "الوضع الفاتح";
+"settings_appearance_system" = "حسب النظام";
+"settings_appearance_light" = "فاتح";
+"settings_appearance_dark" = "داكن";
+"settings_appearance_note" = "\"حسب النظام\" يتبع إعداد الوضع الداكن في هاتفك.";
 "settings_biometric" = "الدخول بالبصمة";
 "settings_biometric_subtitle" = "استخدم البصمة أو التعرّف على الوجه";
 "settings_help" = "المساعدة والدعم";

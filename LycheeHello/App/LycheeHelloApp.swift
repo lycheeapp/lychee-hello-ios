@@ -19,6 +19,8 @@ struct LycheeHelloApp: App {
                 .modifier(AppLanguageEnvironment(language: AppLanguage(rawValue: languageRaw) ?? .system))
                 // Every string is read when its view is built: a new identity rebuilds them all.
                 .id(languageRaw)
+                // Light, dark or the phone's — Settings → Appearance.
+                .modifier(AppAppearanceApplier())
                 .environment(coordinator)
                 .task { await coordinator.start() }
                 .onChange(of: scenePhase) { _, phase in

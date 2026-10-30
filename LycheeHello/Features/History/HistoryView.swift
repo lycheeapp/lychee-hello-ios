@@ -86,44 +86,46 @@ struct HistoryView: View {
     @State private var open: HistoryEntry?
 
     var body: some View {
-        ZStack {
-            Tokens.Colour.surface.ignoresSafeArea()
-
-            if model.isLoading && model.entries.isEmpty {
-                ProgressView()
-            } else if model.entries.isEmpty {
-                emptyState
-            } else {
-                List {
-                    ForEach(Array(model.days.enumerated()), id: \.offset) { _, day in
-                        Section {
-                            ForEach(day.entries) { entry in
-                                Button {
-                                    open = entry
-                                } label: {
-                                    HistoryRow(entry: entry)
-                                }
-                                .buttonStyle(.plain)
-                                .listRowBackground(Tokens.Colour.surface)
-                                .onAppear {
-                                    if entry.id == model.entries.last?.id {
-                                        Task { await model.loadMore() }
-                                    }
-                                }
+        // As on the Stores tab: the list is always the root, so the navigation bar and its search
+        // field track it from the first frame; loading and empty states sit over it.
+        List {
+            ForEach(Array(model.days.enumerated()), id: \.offset) { _, day in
+                Section {
+                    ForEach(day.entries) { entry in
+                        Button {
+                            open = entry
+                        } label: {
+                            HistoryRow(entry: entry)
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(Tokens.Colour.surface)
+                        .onAppear {
+                            if entry.id == model.entries.last?.id {
+                                Task { await model.loadMore() }
                             }
-                        } header: {
-                            Text(day.label)
                         }
                     }
-                    if model.isLoadingMore {
-                        HStack { Spacer(); ProgressView(); Spacer() }
-                            .listRowBackground(Tokens.Colour.surface)
-                    }
+                } header: {
+                    Text(day.label)
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
+            }
+            if model.isLoadingMore {
+                HStack { Spacer(); ProgressView(); Spacer() }
+                    .listRowBackground(Tokens.Colour.surface)
             }
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .overlay {
+            if model.entries.isEmpty {
+                if model.isLoading {
+                    ProgressView()
+                } else {
+                    emptyState
+                }
+            }
+        }
+        .background(Tokens.Colour.surface.ignoresSafeArea())
         .navigationTitle(L("history_title"))
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $model.query, prompt: L("history_search"))
@@ -207,7 +209,7 @@ private struct HistoryRow: View {
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(entry.isReceived ? Tokens.Chat.success : Tokens.Colour.navy)
                 .frame(width: 44, height: 44)
-                .background(Circle().fill(entry.isReceived ? Tokens.Chat.success.opacity(0.12) : Tokens.Colour.surfaceMuted))
+                .background(Circle().fill(entry.isReceived ? Tokens.Colour.positiveFill : Tokens.Colour.surfaceMuted))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(HistoryCopy.counterparty(entry))
@@ -397,6 +399,8 @@ struct ReceiptFiles {
     static func make(for entry: HistoryEntry) -> ReceiptFiles? {
         let card = ReceiptCard(entry: entry, compact: true)
             .frame(width: 360)
+            // A shared receipt is a white document whichever theme the phone is in.
+            .environment(\.colorScheme, .light)
             .environment(\.layoutDirection, AppLanguage.layoutDirection)
             .environment(\.locale, AppLanguage.locale)
         let renderer = ImageRenderer(content: card)

@@ -135,7 +135,7 @@ struct PhoneEntryView: View {
         // A phone number reads left to right in Arabic too: "+970 | 59X XXX XXX", never mirrored.
         .environment(\.layoutDirection, .leftToRight)
         // Soft, diffused, slightly offset downward — the "floating card" effect. No border.
-        .shadow(color: Tokens.Colour.navy.opacity(0.07), radius: 16, x: 0, y: 8)
+        .shadow(color: Tokens.Colour.navyFixed.opacity(0.07), radius: 16, x: 0, y: 8)
     }
 
     /// A country's name in the app's language.

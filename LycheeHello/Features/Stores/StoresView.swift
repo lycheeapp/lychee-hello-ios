@@ -83,28 +83,33 @@ struct StoresView: View {
     var onPay: (PayeeRef) -> Void = { _ in }
 
     var body: some View {
-        ZStack {
-            Tokens.Colour.surface.ignoresSafeArea()
-
-            if model.isLoading && model.entries.isEmpty && !model.showsRecent {
-                ProgressView()
-            } else if model.entries.isEmpty && !model.showsRecent {
-                emptyState
-            } else {
-                list
+        // The list is the screen's root and is always there — loading and empty states sit over it.
+        // The navigation bar finds its scroll view when the screen first appears; a list that only
+        // replaced a spinner later left the large title sitting lower than on the other tabs (and
+        // not collapsing on scroll), because the bar was laid out without it.
+        list
+            .overlay {
+                if model.entries.isEmpty && !model.showsRecent {
+                    if model.isLoading {
+                        ProgressView()
+                    } else {
+                        emptyState
+                    }
+                }
             }
-        }
-        .navigationTitle(L("stores_title"))
-        .searchable(text: $model.query, prompt: L("stores_search"))
-        .task { await model.refreshRecent() }
-        // Debounced on the server, so a search covers every store, not just the loaded page.
-        .task(id: model.query) {
-            if model.loaded {
-                try? await Task.sleep(for: .milliseconds(300))
-                guard !Task.isCancelled else { return }
+            .background(Tokens.Colour.surface.ignoresSafeArea())
+            .navigationTitle(L("stores_title"))
+            .navigationBarTitleDisplayMode(.large)
+            .searchable(text: $model.query, prompt: L("stores_search"))
+            .task { await model.refreshRecent() }
+            // Debounced on the server, so a search covers every store, not just the loaded page.
+            .task(id: model.query) {
+                if model.loaded {
+                    try? await Task.sleep(for: .milliseconds(300))
+                    guard !Task.isCancelled else { return }
+                }
+                await model.search()
             }
-            await model.search()
-        }
     }
 
     private var list: some View {

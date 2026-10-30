@@ -14,6 +14,11 @@ struct LHPrimaryButton: View {
     var isEnabled: Bool = true
     let action: () -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// On the dark surface a faded green still reads as a live button, so the label fades too.
+    private var dimmed: Bool { !isEnabled && colorScheme == .dark }
+
     var body: some View {
         Button(action: action) {
             ZStack {
@@ -22,7 +27,7 @@ struct LHPrimaryButton: View {
                 } else {
                     Text(title)
                         .font(.system(size: 19, weight: .semibold))
-                        .foregroundStyle(Tokens.Colour.textOnBrand)
+                        .foregroundStyle(Tokens.Colour.textOnBrand.opacity(dimmed ? 0.45 : 1))
 
                     if let trailingSystemImage {
                         HStack {
@@ -38,7 +43,7 @@ struct LHPrimaryButton: View {
             .frame(maxWidth: .infinity)
             // Reference button height ≈ 128/1844 → ~60pt, slightly shorter than the field above it.
             .frame(height: 60)
-            .background(isEnabled ? Tokens.Colour.brand : Tokens.Colour.brand.opacity(0.4))
+            .background(isEnabled ? Tokens.Colour.brand : Tokens.Colour.brand.opacity(dimmed ? 0.22 : 0.4))
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .shadow(color: Tokens.Colour.brand.opacity(isEnabled ? 0.26 : 0), radius: 16, x: 0, y: 8)
         }

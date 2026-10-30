@@ -10,6 +10,8 @@ struct SettingsView: View {
     @Environment(SessionCoordinator.self) private var coordinator
     @AppStorage("biometricLoginEnabled") private var biometricLogin = true
     @AppStorage(AppLanguage.storageKey) private var languageRaw = AppLanguage.system.rawValue
+    /// Applied at once by `AppAppearanceApplier` at the root — nothing restarts.
+    @AppStorage(AppAppearance.storageKey) private var appearanceRaw = AppAppearance.system.rawValue
     @State private var showSignOutConfirm = false
     /// Opens the Pay sheet for a payee from a receipt in the history.
     var onPay: (PayeeRef) -> Void = { _ in }
@@ -74,7 +76,19 @@ struct SettingsView: View {
                     row(L("settings_account"), L("settings_account_subtitle"), "person")
                     row(L("settings_privacy"), L("settings_privacy_subtitle"), "lock.shield")
                     row(L("settings_notifications"), L("settings_notifications_subtitle"), "bell")
-                    row(L("settings_appearance"), L("settings_appearance_subtitle"), "moon")
+                }
+
+                Section {
+                    Picker(selection: $appearanceRaw) {
+                        ForEach(AppAppearance.allCases) { appearance in
+                            Text(appearance.title).tag(appearance.rawValue)
+                        }
+                    } label: {
+                        row(L("settings_appearance"), (AppAppearance(rawValue: appearanceRaw) ?? .system).title, "moon")
+                    }
+                    .pickerStyle(.navigationLink)
+                } footer: {
+                    Text(L("settings_appearance_note"))
                 }
 
                 Section {
@@ -140,7 +154,7 @@ struct SettingsView: View {
         HStack(spacing: Tokens.Spacing.lg) {
             Text(coordinator.user?.initials ?? "?")
                 .font(Tokens.Typography.title)
-                .foregroundStyle(Tokens.Colour.navy)
+                .foregroundStyle(Tokens.Colour.navyFixed)
                 .frame(width: 64, height: 64)
                 .background(Color.white)
                 .clipShape(Circle())

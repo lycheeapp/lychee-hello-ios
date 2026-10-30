@@ -227,7 +227,7 @@ struct ChatComposer: View {
                 .padding(.vertical, 7)
                 .background(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.white)
+                        .fill(Tokens.Chat.field)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -273,7 +273,7 @@ struct ScrollToBottomButton: View {
                 .frame(width: 36, height: 36)
                 .background(
                     Circle()
-                        .fill(Color.white)
+                        .fill(Tokens.Chat.field)
                         .shadow(color: .black.opacity(0.15), radius: 3, y: 1)
                 )
                 .frame(width: Tokens.Hit.minimum, height: Tokens.Hit.minimum)

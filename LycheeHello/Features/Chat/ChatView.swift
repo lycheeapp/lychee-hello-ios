@@ -317,7 +317,7 @@ struct ChatView: View {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.92))
+                .fill(Tokens.Chat.bubbleIncoming.opacity(0.92))
         )
         .padding(.horizontal, 32)
         .padding(.top, 32)
@@ -399,7 +399,7 @@ struct PayeeHintChip: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
-                .background(Capsule().fill(Color.white.opacity(0.96)))
+                .background(Capsule().fill(Tokens.Chat.bubbleIncoming.opacity(0.96)))
                 .overlay(Capsule().strokeBorder(Tokens.Chat.barHairline, lineWidth: 0.5))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 10)

@@ -146,9 +146,9 @@ struct NetworkPattern: View {
                 )
                 let path = Path(ellipseIn: rect)
                 if e.fill > 0 {
-                    context.fill(path, with: .color(Color.white.opacity(e.fill)))
+                    context.fill(path, with: .color(Tokens.Colour.motif.opacity(e.fill)))
                 }
-                context.stroke(path, with: .color(Color.white.opacity(e.stroke)), lineWidth: 1.6)
+                context.stroke(path, with: .color(Tokens.Colour.motif.opacity(e.stroke)), lineWidth: 1.6)
             }
 
             // Connectors: long, shallow curves threading between the ellipses. Several deliberately
@@ -166,7 +166,7 @@ struct NetworkPattern: View {
             connectors.move(to: CGPoint(x: w * 0.30, y: h * 0.47))
             connectors.addQuadCurve(to: CGPoint(x: w * 0.05, y: h * 0.78),
                                     control: CGPoint(x: w * 0.10, y: h * 0.58))
-            context.stroke(connectors, with: .color(Color.white.opacity(0.65)), lineWidth: 1.4)
+            context.stroke(connectors, with: .color(Tokens.Colour.motif.opacity(0.65)), lineWidth: 1.4)
 
             for n in nodes {
                 if n.halo {
@@ -174,13 +174,13 @@ struct NetworkPattern: View {
                     context.fill(
                         Path(ellipseIn: CGRect(x: w * n.x - hr, y: h * n.y - hr,
                                                width: hr * 2, height: hr * 2)),
-                        with: .color(Color.white.opacity(0.22))
+                        with: .color(Tokens.Colour.motif.opacity(0.22))
                     )
                 }
                 context.fill(
                     Path(ellipseIn: CGRect(x: w * n.x - n.r, y: h * n.y - n.r,
                                            width: n.r * 2, height: n.r * 2)),
-                    with: .color(Color.white.opacity(n.o))
+                    with: .color(Tokens.Colour.motif.opacity(n.o))
                 )
             }
         }
@@ -241,7 +241,7 @@ struct WelcomeBackground: View {
                 // Flattens the even-odd fill into one layer first, so the shadow is derived from
                 // the composited result rather than from each sub-path separately.
                 .compositingGroup()
-                .shadow(color: Tokens.Colour.navy.opacity(0.099), radius: 30, x: 0, y: 7)
+                .shadow(color: Tokens.Colour.motifShadow, radius: 30, x: 0, y: 7)
         }
         .ignoresSafeArea()
     }

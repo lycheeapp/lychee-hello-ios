@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Lychee Hello design tokens.
 ///
@@ -13,33 +14,49 @@ public enum Tokens {
 
     // MARK: - Colour
 
+    /// Brand colours. Most come in a light and a dark value and follow the theme on their own —
+    /// the phone's, or the one Settings pins (`AppAppearance`). **The pairs must stay identical to
+    /// `LightPalette` / `DarkPalette` in `lychee-hello-android/.../ui/theme/Palette.kt`.**
+    ///
+    /// The dark set keeps the brand green and the card's navy-to-green gradient, and moves the cream
+    /// and white surfaces to a blue-black so the green still reads as Lychee's.
     public enum Colour {
         /// Warm off-white page background. Not pure white — it carries a cream tint.
-        public static let surface = Color(hex: 0xFAF9F6)
+        public static let surface = Color(light: 0xFAF9F6, dark: 0x0F1419)
         /// Cards, incoming bubbles, input fields.
-        public static let surfaceElevated = Color.white
+        public static let surfaceElevated = Color(light: 0xFFFFFF, dark: 0x1A2027)
         /// Pale mint of the welcome screen's lower region.
-        public static let surfaceMuted = Color(hex: 0xEEF9F2)
+        public static let surfaceMuted = Color(light: 0xEEF9F2, dark: 0x12261B)
 
-        /// Primary brand green — logo, CTA, chevrons, security icon.
+        /// Primary brand green — logo, CTA, chevrons, security icon. The same in both themes.
         public static let brand = Color(hex: 0x16C765)
 
-        /// Deep navy — wordmark, headings, dark cards.
-        public static let navy = Color(hex: 0x111B3A)
+        /// The ink of headings and the wordmark: deep navy on light, near-white on dark. Use
+        /// `navyFixed` where the navy itself is wanted whatever the theme (text on a white chip).
+        public static let navy = Color(light: 0x111B3A, dark: 0xE8ECF2)
+        /// Deep navy in both themes.
+        public static let navyFixed = Color(hex: 0x111B3A)
 
         /// Outgoing (user) chat bubble.
-        public static let bubbleOutgoing = Color(hex: 0xD9F2DD)
+        public static let bubbleOutgoing = Color(light: 0xD9F2DD, dark: 0x1E4D2E)
         /// Incoming (Lychee) chat bubble.
-        public static let bubbleIncoming = Color.white
+        public static let bubbleIncoming = Color(light: 0xFFFFFF, dark: 0x1A2027)
 
-        public static let textPrimary = Color(hex: 0x111B3A)
+        public static let textPrimary = Color(light: 0x111B3A, dark: 0xE8ECF2)
         /// Placeholder / secondary text.
-        public static let textSecondary = Color(hex: 0x77777D)
+        public static let textSecondary = Color(light: 0x77777D, dark: 0x9BA1A8)
         public static let textOnDark = Color.white
         public static let textOnBrand = Color.white
 
-        public static let danger = Color(hex: 0xE5484D)
-        public static let divider = Color(hex: 0xE4E4E4)
+        public static let danger = Color(light: 0xE5484D, dark: 0xFF6B70)
+        public static let divider = Color(light: 0xE4E4E4, dark: 0x2A3138)
+
+        /// Pale green behind money that came in.
+        public static let positiveFill = Color(light: 0xE3F6EA, dark: 0x143322)
+
+        /// The welcome screen's network motif, and the shadow its cream layer casts on the mint.
+        public static let motif = Color(light: 0xFFFFFF, dark: 0x16C765, darkOpacity: 0.16)
+        public static let motifShadow = Color(light: 0x111B3A, dark: 0x000000, lightOpacity: 0.099, darkOpacity: 0.45)
 
         /// ⚠️ **Accessibility note — measured, not guessed.**
         ///
@@ -53,7 +70,7 @@ public enum Tokens {
         /// one-line change if you decide the CTA should pass.
         public static let brandAccessible = Color(hex: 0x0EA84F)
 
-        /// Navy → deep green gradient used by the balance and profile cards.
+        /// Navy → deep green gradient used by the balance and profile cards. The same in both themes.
         public static let cardGradient = LinearGradient(
             colors: [Color(hex: 0x0D1B2A), Color(hex: 0x0B5F35)],
             startPoint: .topLeading,
@@ -120,6 +137,16 @@ public enum Tokens {
 }
 
 extension Color {
+    /// A colour that follows the theme: `light` in the light theme, `dark` in the dark one. Resolved
+    /// wherever it is drawn, so a sheet, an alert or a forced appearance all get the right value.
+    init(light: UInt32, dark: UInt32, lightOpacity: Double = 1, darkOpacity: Double = 1) {
+        self.init(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(hex: dark, alpha: darkOpacity)
+                : UIColor(hex: light, alpha: lightOpacity)
+        })
+    }
+
     /// Hex initialiser so tokens read the way a designer states them.
     init(hex: UInt32) {
         self.init(
@@ -128,6 +155,17 @@ extension Color {
             green: Double((hex >> 8) & 0xFF) / 255.0,
             blue: Double(hex & 0xFF) / 255.0,
             opacity: 1.0
+        )
+    }
+}
+
+extension UIColor {
+    convenience init(hex: UInt32, alpha: Double = 1) {
+        self.init(
+            red: CGFloat((hex >> 16) & 0xFF) / 255.0,
+            green: CGFloat((hex >> 8) & 0xFF) / 255.0,
+            blue: CGFloat(hex & 0xFF) / 255.0,
+            alpha: CGFloat(alpha)
         )
     }
 }

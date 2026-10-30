@@ -18,41 +18,43 @@ extension Tokens {
 
         // MARK: Colour
 
-        /// Warm beige behind the transcript.
-        static let wallpaper = Color(hex: 0xEFEAE2)
+        /// Warm beige behind the transcript. The dark values follow WhatsApp's own dark theme.
+        static let wallpaper = Color(light: 0xEFEAE2, dark: 0x0B141A)
         /// Ink for the wallpaper doodles; kept faint so text never competes with it.
-        static let wallpaperInk = Color(hex: 0x111B3A).opacity(0.05)
+        static let wallpaperInk = Color(light: 0x111B3A, dark: 0xFFFFFF, lightOpacity: 0.05, darkOpacity: 0.04)
 
-        static let bubbleOutgoing = Color(hex: 0xD9FDD3)
-        static let bubbleIncoming = Color.white
+        static let bubbleOutgoing = Color(light: 0xD9FDD3, dark: 0x005C4B)
+        static let bubbleIncoming = Color(light: 0xFFFFFF, dark: 0x202C33)
         /// The hairline under every bubble, standing in for a (much more expensive) shadow.
-        static let bubbleShade = Color(hex: 0x0B141A).opacity(0.13)
+        static let bubbleShade = Color(light: 0x0B141A, dark: 0x000000, lightOpacity: 0.13, darkOpacity: 0.25)
 
-        static let text = Color(hex: 0x111B21)
+        static let text = Color(light: 0x111B21, dark: 0xE9EDEF)
         /// Timestamps, subtitles, secondary lines.
-        static let meta = Color(hex: 0x667781)
+        static let meta = Color(light: 0x667781, dark: 0x9AABB3)
 
         static let tickRead = Color(hex: 0x53BDEB)
         static let tickUnread = Color(hex: 0x8696A0)
 
         /// Tappable text inside the transcript (reply buttons, "Review payment"). 4.8:1 on white.
-        static let action = Color(hex: 0x027EB5)
+        static let action = Color(light: 0x027EB5, dark: 0x53BDEB)
 
-        static let dateChip = Color.white.opacity(0.94)
-        static let dateChipText = Color(hex: 0x54656F)
+        static let dateChip = Color(light: 0xFFFFFF, dark: 0x182229, lightOpacity: 0.94, darkOpacity: 0.94)
+        static let dateChipText = Color(light: 0x54656F, dark: 0x8696A0)
 
-        /// Pale yellow of in-thread notices ("Payment cancelled…").
-        static let notice = Color(hex: 0xFFF3C5)
-        static let noticeText = Color(hex: 0x54656F)
+        /// Pale yellow of in-thread notices ("Payment cancelled…"); amber text on dark.
+        static let notice = Color(light: 0xFFF3C5, dark: 0x182229)
+        static let noticeText = Color(light: 0x54656F, dark: 0xFFD279)
 
         /// Navigation bar, pinned bar and composer bar.
-        static let bar = Color(hex: 0xF6F6F6)
-        static let barHairline = Color(hex: 0xD1D1D6)
-        static let fieldBorder = Color(hex: 0xD1D1D6)
+        static let bar = Color(light: 0xF6F6F6, dark: 0x1C1C1E)
+        static let barHairline = Color(light: 0xD1D1D6, dark: 0x38383A)
+        static let fieldBorder = Color(light: 0xD1D1D6, dark: 0x38383A)
+        /// The composer's text field and the floating scroll-to-bottom button.
+        static let field = Color(light: 0xFFFFFF, dark: 0x2C2C2E)
 
         /// "typing…", "Payment sent". Darker than the brand green so small text stays readable
-        /// (5.2:1 on white, where the brand green measures 2.2:1).
-        static let success = Color(hex: 0x0A7D3E)
+        /// (5.2:1 on white, where the brand green measures 2.2:1); brighter on dark.
+        static let success = Color(light: 0x0A7D3E, dark: 0x21C063)
 
         // MARK: Shape & spacing
 
