@@ -361,6 +361,30 @@ public actor HelloRepository: HelloRepositoryProtocol {
         if let before { parameters["before"] = String(before) }
         return try await api.get("payments/history", query: parameters)
     }
+
+    // MARK: - Cards
+
+    public func wallet() async throws -> Wallet {
+        try await api.get("wallet")
+    }
+
+    public func onePaySettings() async throws -> OnePaySettings {
+        try await api.get("wallet/onepay/settings")
+    }
+
+    public func createOnePay(amount: Double, acceptedTerms: Bool) async throws -> Wallet {
+        try await api.post("wallet/onepay", body: HelloRequests.CreateOnePay(amount: amount, acceptedTerms: acceptedTerms))
+    }
+
+    /// `payload` is the POS tag URL's `p` parameter, verbatim.
+    public func tapPreview(payload: String) async throws -> TapPreview {
+        try await api.get("tap/preview", query: ["payload": payload])
+    }
+
+    /// Safe to repeat with the same body: the same receipt comes back, not a second charge.
+    public func tapPay(payload: String, cardId: String) async throws -> TapReceipt {
+        try await api.post("tap/pay", body: HelloRequests.TapPay(payload: payload, cardId: cardId))
+    }
 }
 
 // MARK: - Device info
@@ -417,29 +441,5 @@ public struct DeviceInfoProvider: DeviceInfoProviding {
         ]
         SecItemDelete(query as CFDictionary)
         SecItemAdd(query as CFDictionary, nil)
-    }
-
-    // MARK: - Cards
-
-    public func wallet() async throws -> Wallet {
-        try await api.get("wallet")
-    }
-
-    public func onePaySettings() async throws -> OnePaySettings {
-        try await api.get("wallet/onepay/settings")
-    }
-
-    public func createOnePay(amount: Double, acceptedTerms: Bool) async throws -> Wallet {
-        try await api.post("wallet/onepay", body: HelloRequests.CreateOnePay(amount: amount, acceptedTerms: acceptedTerms))
-    }
-
-    /// `payload` is the POS tag URL's `p` parameter, verbatim.
-    public func tapPreview(payload: String) async throws -> TapPreview {
-        try await api.get("tap/preview", query: ["payload": payload])
-    }
-
-    /// Safe to repeat with the same body: the same receipt comes back, not a second charge.
-    public func tapPay(payload: String, cardId: String) async throws -> TapReceipt {
-        try await api.post("tap/pay", body: HelloRequests.TapPay(payload: payload, cardId: cardId))
     }
 }

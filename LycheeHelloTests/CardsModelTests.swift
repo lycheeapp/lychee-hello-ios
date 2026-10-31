@@ -7,38 +7,25 @@ import SwiftUI
 @MainActor
 final class CardsModelTests: XCTestCase {
 
-    private var defaults: UserDefaults!
-    private var suite: String!
+    private typealias Card = CardFixtures
 
-    override func setUp() {
-        super.setUp()
-        suite = "cards-tests-\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suite)
+    /// Each test its own store, so a remembered choice never leaks between tests.
+    private func freshDefaults() -> UserDefaults {
+        UserDefaults(suiteName: "cards-tests-\(UUID().uuidString)")!
     }
-
-    override func tearDown() {
-        defaults.removePersistentDomain(forName: suite)
-        AppLanguage.set(.system)
-        super.tearDown()
-    }
-
-    private let balance = WalletCard(id: "WALLET", kind: "WALLET", title: "Lychee balance", balance: 120)
-    private let mine = WalletCard(id: "ONEPAY:1111", kind: "ONEPAY", codeMasked: "•••• 1111", balance: 50)
-    private let gift = WalletCard(id: "ONEPAY:2222", kind: "ONEPAY", from: "Sara K.", balance: 298)
-    private let bravo = WalletCard(id: "STATIC:3333", kind: "STATIC", from: "Bravo", balance: 40, storeName: "Bravo")
 
     private func wallet(_ cards: [WalletCard], defaultCardId: String? = nil, newCardId: String? = nil) -> Wallet {
         Wallet(cards: cards, defaultCardId: defaultCardId, newCardId: newCardId)
     }
 
-    private func model(_ repository: WalletRepository) -> CardsModel {
-        CardsModel(repository: repository, defaults: defaults)
+    private func model(_ repository: WalletRepository, defaults: UserDefaults? = nil) -> CardsModel {
+        CardsModel(repository: repository, defaults: defaults ?? freshDefaults())
     }
 
     // MARK: - The stack
 
     func testTheTapAndPayDefaultIsInFrontTheFirstTime() async {
-        let repository = WalletRepository(wallets: [wallet([balance, mine, gift], defaultCardId: "ONEPAY:2222")])
+        let repository = WalletRepository(wallets: [wallet([Card.balance, Card.mine, Card.gift], defaultCardId: "ONEPAY:2222")])
         let model = model(repository)
         await model.start(accountKey: "7")
         XCTAssertEqual(model.selected?.id, "ONEPAY:2222")
@@ -46,8 +33,9 @@ final class CardsModelTests: XCTestCase {
     }
 
     func testChoosingACardSwapsItWithTheFrontOneAndIsRemembered() async {
-        let repository = WalletRepository(wallets: [wallet([balance, mine, gift, bravo])])
-        let model = model(repository)
+        let defaults = freshDefaults()
+        let repository = WalletRepository(wallets: [wallet([Card.balance, Card.mine, Card.gift, Card.bravo])])
+        let model = model(repository, defaults: defaults)
         await model.start(accountKey: "7")
         XCTAssertEqual(model.order, ["ONEPAY:1111", "ONEPAY:2222", "STATIC:3333", "WALLET"])
         XCTAssertEqual(model.selected?.id, "WALLET")
@@ -57,18 +45,18 @@ final class CardsModelTests: XCTestCase {
         XCTAssertEqual(model.selected?.id, "ONEPAY:1111")
 
         // Another visit, same phone, same account: the same card is in front.
-        let again = self.model(WalletRepository(wallets: [wallet([balance, mine, gift, bravo])]))
+        let again = self.model(WalletRepository(wallets: [wallet([Card.balance, Card.mine, Card.gift, Card.bravo])]), defaults: defaults)
         await again.start(accountKey: "7")
         XCTAssertEqual(again.selected?.id, "ONEPAY:1111")
 
         // Another account on the phone has its own choice.
-        let other = self.model(WalletRepository(wallets: [wallet([balance, mine])]))
+        let other = self.model(WalletRepository(wallets: [wallet([Card.balance, Card.mine])]), defaults: defaults)
         await other.start(accountKey: "8")
         XCTAssertEqual(other.selected?.id, "WALLET")
     }
 
     func testChoosingTheFrontCardChangesNothing() async {
-        let model = model(WalletRepository(wallets: [wallet([balance, mine])]))
+        let model = model(WalletRepository(wallets: [wallet([Card.balance, Card.mine])]))
         await model.start(accountKey: "7")
         let before = model.order
         model.select(model.order.last!)
@@ -97,7 +85,7 @@ final class CardsModelTests: XCTestCase {
     }
 
     func testATagThatIsNotLycheesSaysSo() async {
-        let model = model(WalletRepository(wallets: [wallet([balance])]))
+        let model = model(WalletRepository(wallets: [wallet([Card.balance])]))
         await model.start(accountKey: "7")
         await model.tagRead("https://example.com/hello")
         guard case let .failed(message, payload) = model.pay else { return XCTFail("\(model.pay)") }
@@ -106,7 +94,7 @@ final class CardsModelTests: XCTestCase {
     }
 
     func testTheFrontCardPaysWhenItCanOtherwiseTheNearestThatCan() async {
-        let repository = WalletRepository(wallets: [wallet([balance, mine, bravo])])
+        let repository = WalletRepository(wallets: [wallet([Card.balance, Card.mine, Card.bravo])])
         let model = model(repository)
         await model.start(accountKey: "7")
         model.select("STATIC:3333")
@@ -125,7 +113,7 @@ final class CardsModelTests: XCTestCase {
 
         repository.receipt = TapReceipt(txnRef: "T1", status: "PAID", amount: 12, currencyCode: "ILS", storeName: "Rio",
                                         cardId: cardId, newBalance: 38, paidAt: nil)
-        repository.wallets = [wallet([balance, WalletCard(id: "ONEPAY:1111", kind: "ONEPAY", balance: 38), bravo])]
+        repository.wallets = [wallet([Card.balance, WalletCard(id: "ONEPAY:1111", kind: "ONEPAY", balance: 38), Card.bravo])]
         await model.confirmPay()
         guard case let .paid(receipt, _) = model.pay else { return XCTFail("\(model.pay)") }
         XCTAssertTrue(receipt.isPaid)
@@ -134,7 +122,7 @@ final class CardsModelTests: XCTestCase {
     }
 
     func testNothingIsPaidWithACardThatCannot() async {
-        let repository = WalletRepository(wallets: [wallet([balance])])
+        let repository = WalletRepository(wallets: [wallet([Card.balance])])
         let model = model(repository)
         await model.start(accountKey: "7")
         repository.preview = TapPreview(storeName: "Rio", amount: 500, currencyCode: "ILS", expiresAt: nil, transit: false, options: [
@@ -146,7 +134,7 @@ final class CardsModelTests: XCTestCase {
     }
 
     func testAFailedPaymentKeepsTheRequestToTryAgain() async {
-        let repository = WalletRepository(wallets: [wallet([balance])])
+        let repository = WalletRepository(wallets: [wallet([Card.balance])])
         let model = model(repository)
         await model.start(accountKey: "7")
         repository.preview = TapPreview(storeName: "Rio", amount: 5, currencyCode: "ILS", expiresAt: nil, transit: false, options: [
@@ -163,7 +151,7 @@ final class CardsModelTests: XCTestCase {
     // MARK: - A new OnePay voucher
 
     func testANewVoucherKeepsToTheLimitsAndTheBalance() async {
-        let repository = WalletRepository(wallets: [wallet([balance])])
+        let repository = WalletRepository(wallets: [wallet([Card.balance])])
         repository.settings = OnePaySettings(voucherName: "OnePay", min: 10, max: 100, currencyCode: "ILS", validity: "ONE_YEAR", terms: [])
         let model = model(repository)
         await model.start(accountKey: "7")
@@ -182,7 +170,7 @@ final class CardsModelTests: XCTestCase {
         XCTAssertTrue(repository.created.isEmpty)
 
         model.create?.accepted = true
-        repository.wallets = [wallet([balance, mine], newCardId: "ONEPAY:1111")]
+        repository.wallets = [wallet([Card.balance, Card.mine], newCardId: "ONEPAY:1111")]
         await model.submitCreate()
         XCTAssertEqual(repository.created, [50])
         XCTAssertNil(model.create)
@@ -190,7 +178,7 @@ final class CardsModelTests: XCTestCase {
     }
 
     func testOverTheBalanceIsRefused() async {
-        let repository = WalletRepository(wallets: [wallet([balance])])
+        let repository = WalletRepository(wallets: [wallet([Card.balance])])
         repository.settings = OnePaySettings(voucherName: nil, min: 1, max: 1000, currencyCode: "ILS", validity: nil, terms: nil)
         let model = model(repository)
         await model.start(accountKey: "7")
@@ -216,6 +204,14 @@ final class CardsModelTests: XCTestCase {
         XCTAssertEqual(CardPalette.colours(WalletCard(id: "x", kind: "ONEPAY")),
                        [Color(hex: 0x0E7A43), Color(hex: 0x07402A)], "the user's own voucher is Lychee green")
     }
+}
+
+/// The cards the tests use.
+private enum CardFixtures {
+    static let balance = WalletCard(id: "WALLET", kind: "WALLET", title: "Lychee balance", balance: 120)
+    static let mine = WalletCard(id: "ONEPAY:1111", kind: "ONEPAY", codeMasked: "•••• 1111", balance: 50)
+    static let gift = WalletCard(id: "ONEPAY:2222", kind: "ONEPAY", from: "Sara K.", balance: 298)
+    static let bravo = WalletCard(id: "STATIC:3333", kind: "STATIC", from: "Bravo", balance: 40, storeName: "Bravo")
 }
 
 /// Answers the Cards calls from what each test sets; everything else is unused here.
