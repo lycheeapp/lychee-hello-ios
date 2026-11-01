@@ -36,6 +36,10 @@ struct CreateState: Equatable {
 final class CardsModel {
 
     static let walletId = "WALLET"
+    /// Settings → "Confirm before paying at a POS". On (the default): the payment opens for review
+    /// and nothing is paid until Pay is tapped. Off: the card in front pays as soon as the POS's
+    /// request is read — when it can pay it.
+    nonisolated static let confirmBeforePayingKey = "cardsConfirmBeforePaying"
 
     private(set) var wallet: Wallet?
     private(set) var isLoading = true
@@ -138,12 +142,32 @@ final class CardsModel {
         pay = .reading
         do {
             let preview = try await repository.tapPreview(payload: payload)
-            pay = .ready(payload: payload, preview: preview, cardId: payCard(for: preview), paying: false, error: nil)
+            let cardId = payCard(for: preview)
+            pay = .ready(payload: payload, preview: preview, cardId: cardId, paying: false, error: nil)
+            if paysWithoutAsking(preview, cardId: cardId) {
+                await confirmPay()
+            }
         } catch let failure as APIError {
             pay = .failed(message: failure.userMessage, payload: failure.isRetryable ? payload : nil)
         } catch {
             pay = .failed(message: L("tap_failed_title"), payload: payload)
         }
+    }
+
+    var confirmsBeforePaying: Bool {
+        defaults.object(forKey: Self.confirmBeforePayingKey) as? Bool ?? true
+    }
+
+    /// With "Confirm before paying" off, the card in front pays straight away — only that card, and
+    /// only while the request is live. Anything else (the front card cannot pay it, the request has
+    /// expired) opens the payment as usual, so a different card is never used without the user
+    /// seeing which.
+    private func paysWithoutAsking(_ preview: TapPreview, cardId: String) -> Bool {
+        guard !confirmsBeforePaying, let front = order.last, cardId == front, preview.canPay(with: front) else {
+            return false
+        }
+        guard let expiresAt = preview.expiresAt else { return true }
+        return Double(expiresAt) / 1000 > Date().timeIntervalSince1970
     }
 
     /// The chosen card when it can pay this; otherwise the nearest card that can, front first.

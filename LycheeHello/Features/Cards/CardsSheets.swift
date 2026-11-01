@@ -114,10 +114,13 @@ struct TapPaySheet: View {
                     Task { await model.confirmPay() }
                 }
                 .padding(.top, Tokens.Spacing.lg)
-                Label(L("tap_nothing_until"), systemImage: "lock")
-                    .font(.caption)
-                    .foregroundStyle(Tokens.Colour.textSecondary)
-                    .padding(.top, Tokens.Spacing.xs)
+                // Not while paying: with "Confirm before paying" off, the payment is already on its way.
+                if !paying {
+                    Label(L("tap_nothing_until"), systemImage: "lock")
+                        .font(.caption)
+                        .foregroundStyle(Tokens.Colour.textSecondary)
+                        .padding(.top, Tokens.Spacing.xs)
+                }
             }
         }
     }

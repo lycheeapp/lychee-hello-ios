@@ -9,6 +9,7 @@ struct SettingsView: View {
 
     @Environment(SessionCoordinator.self) private var coordinator
     @AppStorage("biometricLoginEnabled") private var biometricLogin = true
+    @AppStorage(CardsModel.confirmBeforePayingKey) private var confirmBeforePaying = true
     @AppStorage(AppLanguage.storageKey) private var languageRaw = AppLanguage.system.rawValue
     /// Applied at once by `AppAppearanceApplier` at the root — nothing restarts.
     @AppStorage(AppAppearance.storageKey) private var appearanceRaw = AppAppearance.system.rawValue
@@ -105,6 +106,27 @@ struct SettingsView: View {
                         }
                     }
                     .tint(Tokens.Colour.brand)
+                }
+
+                // Paying at a POS from the Cards tab — which a business account does not have.
+                if coordinator.user?.isBusiness != true {
+                    Section {
+                        Toggle(isOn: $confirmBeforePaying) {
+                            Label {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(L("settings_confirm_pos")).font(Tokens.Typography.body)
+                                    Text(L("settings_confirm_pos_subtitle"))
+                                        .font(Tokens.Typography.caption)
+                                        .foregroundStyle(Tokens.Colour.textSecondary)
+                                }
+                            } icon: {
+                                Image(systemName: "wave.3.right.circle").foregroundStyle(Tokens.Colour.navy)
+                            }
+                        }
+                        .tint(Tokens.Colour.brand)
+                    } footer: {
+                        Text(L("settings_confirm_pos_footer"))
+                    }
                 }
 
                 Section {

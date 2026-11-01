@@ -106,6 +106,7 @@ final class CardsModelTests: XCTestCase {
         ])
         await model.tagRead("https://pay.lycheeapp.org/pay?p=abc")
         guard case let .ready(payload, _, cardId, paying, _) = model.pay else { return XCTFail("\(model.pay)") }
+        XCTAssertTrue(repository.paid.isEmpty, "confirm before paying is on by default: nothing is paid yet")
         XCTAssertEqual(payload, "abc")
         XCTAssertFalse(paying)
         let nearest = model.order.reversed().first { $0 != "STATIC:3333" }
@@ -119,6 +120,67 @@ final class CardsModelTests: XCTestCase {
         XCTAssertTrue(receipt.isPaid)
         XCTAssertEqual(repository.paid.first?.payload, "abc")
         XCTAssertEqual(repository.paid.first?.cardId, cardId)
+    }
+
+    // MARK: - Confirm before paying: off
+
+    private func confirmationOff() -> UserDefaults {
+        let defaults = freshDefaults()
+        defaults.set(false, forKey: CardsModel.confirmBeforePayingKey)
+        return defaults
+    }
+
+    func testWithConfirmationOffTheFrontCardPaysAsSoonAsThePosIsRead() async {
+        let repository = WalletRepository(wallets: [wallet([Card.balance, Card.mine])])
+        let model = model(repository, defaults: confirmationOff())
+        await model.start(accountKey: "7")
+        model.select("ONEPAY:1111")
+        repository.preview = TapPreview(storeName: "Rio", amount: 12, currencyCode: "ILS",
+                                        expiresAt: Int64((Date().timeIntervalSince1970 + 60) * 1000), transit: false, options: [
+            CardOption(cardId: "WALLET", usable: true, reason: nil, balance: 120),
+            CardOption(cardId: "ONEPAY:1111", usable: true, reason: nil, balance: 50)
+        ])
+        repository.receipt = TapReceipt(txnRef: "T1", status: "PAID", amount: 12, currencyCode: "ILS", storeName: "Rio",
+                                        cardId: "ONEPAY:1111", newBalance: 38, paidAt: nil)
+
+        await model.tagRead("https://pay.lycheeapp.org/pay?p=abc")
+
+        XCTAssertEqual(repository.paid.first?.payload, "abc")
+        XCTAssertEqual(repository.paid.first?.cardId, "ONEPAY:1111")
+        guard case .paid = model.pay else { return XCTFail("\(model.pay)") }
+    }
+
+    func testWithConfirmationOffAFrontCardThatCannotPayOpensThePaymentInstead() async {
+        let repository = WalletRepository(wallets: [wallet([Card.balance, Card.mine])])
+        let model = model(repository, defaults: confirmationOff())
+        await model.start(accountKey: "7")
+        model.select("ONEPAY:1111")
+        repository.preview = TapPreview(storeName: "Rio", amount: 80, currencyCode: "ILS", expiresAt: nil, transit: false, options: [
+            CardOption(cardId: "WALLET", usable: true, reason: nil, balance: 120),
+            CardOption(cardId: "ONEPAY:1111", usable: false, reason: "insufficient_balance", balance: 50)
+        ])
+
+        await model.tagRead("https://pay.lycheeapp.org/pay?p=abc")
+
+        // Never another card behind the user's back: the payment opens with the balance offered.
+        XCTAssertTrue(repository.paid.isEmpty)
+        guard case let .ready(_, _, cardId, paying, _) = model.pay else { return XCTFail("\(model.pay)") }
+        XCTAssertEqual(cardId, "WALLET")
+        XCTAssertFalse(paying)
+    }
+
+    func testWithConfirmationOffAnExpiredRequestIsNotPaid() async {
+        let repository = WalletRepository(wallets: [wallet([Card.balance])])
+        let model = model(repository, defaults: confirmationOff())
+        await model.start(accountKey: "7")
+        repository.preview = TapPreview(storeName: "Rio", amount: 5, currencyCode: "ILS", expiresAt: 1_000, transit: false, options: [
+            CardOption(cardId: "WALLET", usable: true, reason: nil, balance: 120)
+        ])
+
+        await model.tagRead("https://pay.lycheeapp.org/pay?p=abc")
+
+        XCTAssertTrue(repository.paid.isEmpty)
+        guard case .ready = model.pay else { return XCTFail("\(model.pay)") }
     }
 
     func testNothingIsPaidWithACardThatCannot() async {
