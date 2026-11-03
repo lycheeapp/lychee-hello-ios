@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>org.lycheeapp.lychee-hello</string>
+	<string>org.lycheeapp.hello</string>
 	<key>PROJECT_ID</key>
 	<string>lychee-hello</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:513812779930:ios:a47c650f296444127b2023</string>
+	<string>1:513812779930:ios:6562c31f03d34b567b2023</string>
 </dict>
 </plist>
