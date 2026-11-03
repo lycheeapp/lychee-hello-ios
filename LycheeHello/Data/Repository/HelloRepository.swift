@@ -98,6 +98,9 @@ public protocol HelloRepositoryProtocol: Sendable {
     /// Deactivates this Lychee Hello account: every Hello session of it ends; signing in again
     /// reactivates it. The Lychee account, wallet and vouchers are untouched.
     func deactivateAccount() async throws
+    /// Deletes this Lychee Hello account: its chats go and every Hello session of it ends; an account
+    /// with no Lychee account is erased. A Lychee account and its wallet are not deleted here.
+    func deleteAccount() async throws
 
     func generalConversation() async throws -> Conversation
     func conversations() async throws -> [Conversation]
@@ -133,6 +136,7 @@ public protocol HelloRepositoryProtocol: Sendable {
 /// Defaults so a test double that has nothing to do with cards need not stub them.
 public extension HelloRepositoryProtocol {
     func deactivateAccount() async throws { throw APIError.transport("not supported") }
+    func deleteAccount() async throws { throw APIError.transport("not supported") }
     func wallet() async throws -> Wallet { throw APIError.transport("not supported") }
     func onePaySettings() async throws -> OnePaySettings { throw APIError.transport("not supported") }
     func createOnePay(amount: Double, acceptedTerms: Bool) async throws -> Wallet { throw APIError.transport("not supported") }
@@ -232,6 +236,12 @@ public actor HelloRepository: HelloRepositoryProtocol {
     /// The server ends this session too, so the token is cleared here whatever the answer body.
     public func deactivateAccount() async throws {
         let _: EmptyResponse = try await api.post("me/deactivate")
+        await tokenStore.clear()
+    }
+
+    /// As `deactivateAccount`, for good: the server deletes the account's Hello data.
+    public func deleteAccount() async throws {
+        let _: EmptyResponse = try await api.post("me/delete")
         await tokenStore.clear()
     }
 

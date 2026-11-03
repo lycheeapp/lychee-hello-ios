@@ -383,6 +383,14 @@
 "account_deactivate_confirm_title" = "إلغاء تفعيل حسابك؟";
 "account_deactivate_confirm_body" = "سيتم تسجيل خروجك من Lychee Hello على جميع أجهزتك. لا تتأثر قسائمك ولا أي حساب Lychee، ويمكنك تسجيل الدخول مجددًا في أي وقت لإعادة التفعيل.";
 "account_deactivate_failed" = "تعذّر إلغاء تفعيل حسابك";
+"account_delete" = "حذف الحساب";
+"account_delete_footer_guest" = "يحذف حسابك في Lychee Hello نهائيًا: اسمك ورقمك ومحادثاتك. تُحفظ المدفوعات التي أجريتها كسجلات، وتبقى القسائم المرسلة إلى رقمك قابلة للاستخدام برمزها.";
+"account_delete_footer_lychee" = "يحذف حسابك ومحادثاتك في Lychee Hello، ويسجّل خروجك من جميع أجهزتك. لا يُحذف حساب Lychee ومحفظتك من هنا — يمكنك حذفهما من تطبيق Lychee.";
+"account_delete_confirm_title" = "حذف حسابك؟";
+"account_delete_confirm_body_guest" = "لا يمكن التراجع عن ذلك. سيُحذف اسمك ورقمك ومحادثاتك، وسيُسجَّل خروجك من جميع أجهزتك.";
+"account_delete_confirm_body_lychee" = "لا يمكن التراجع عن ذلك. ستُحذف محادثاتك في Lychee Hello وسيُسجَّل خروجك من جميع أجهزتك. يبقى حساب Lychee ومحفظتك؛ احذفهما من تطبيق Lychee.";
+"account_delete_confirm" = "حذف";
+"account_delete_failed" = "تعذّر حذف حسابك";
 "privacy_code_warning" = "لن تطلب منك Lychee رمز التحقق أبدًا. لا تشاركه مع أي أحد.";
 "privacy_policy" = "سياسة الخصوصية والشروط";
 "privacy_policy_footer" = "كيف تتعامل Lychee مع بياناتك، على lycheeapp.org.";

@@ -44,9 +44,13 @@ struct AccountProfileView: View {
     @State private var confirmDeactivate = false
     @State private var isDeactivating = false
     @State private var deactivateError: String?
+    @State private var confirmDelete = false
+    @State private var isDeleting = false
+    @State private var deleteError: String?
     @State private var browsing: BrowsedPage?
 
     private var user: HelloUser? { coordinator.user }
+    private var isGuest: Bool { user?.isGuest == true }
 
     var body: some View {
         List {
@@ -117,9 +121,27 @@ struct AccountProfileView: View {
                         if isDeactivating { ProgressView() }
                     }
                 }
-                .disabled(isDeactivating)
+                .disabled(isDeactivating || isDeleting)
             } footer: {
                 Text(L("account_deactivate_footer"))
+            }
+
+            // Deleting, as App Store guideline 5.1.1(v) asks of an app that makes accounts. A guest's
+            // account exists only here, so all of it goes; a Lychee account loses Hello's part only.
+            Section {
+                Button(role: .destructive) {
+                    confirmDelete = true
+                } label: {
+                    HStack {
+                        Text(L("account_delete"))
+                            .foregroundStyle(Tokens.Colour.danger)
+                        Spacer()
+                        if isDeleting { ProgressView() }
+                    }
+                }
+                .disabled(isDeactivating || isDeleting)
+            } footer: {
+                Text(L(isGuest ? "account_delete_footer_guest" : "account_delete_footer_lychee"))
             }
         }
         .listStyle(.insetGrouped)
@@ -145,6 +167,18 @@ struct AccountProfileView: View {
             Button(L("common_ok"), role: .cancel) { deactivateError = nil }
         } message: {
             Text(deactivateError ?? "")
+        }
+        .alert(L("account_delete_confirm_title"), isPresented: $confirmDelete) {
+            Button(L("account_delete_confirm"), role: .destructive) { Task { await delete() } }
+            Button(L("common_cancel"), role: .cancel) {}
+        } message: {
+            Text(L(isGuest ? "account_delete_confirm_body_guest" : "account_delete_confirm_body_lychee"))
+        }
+        .alert(L("account_delete_failed"),
+               isPresented: .init(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
+            Button(L("common_ok"), role: .cancel) { deleteError = nil }
+        } message: {
+            Text(deleteError ?? "")
         }
     }
 
@@ -185,6 +219,18 @@ struct AccountProfileView: View {
         }
         .frame(minHeight: Tokens.Hit.minimum)
         .contentShape(Rectangle())
+    }
+
+    private func delete() async {
+        isDeleting = true
+        defer { isDeleting = false }
+        do {
+            try await coordinator.deleteAccount()
+        } catch let error as APIError {
+            deleteError = error.userMessage
+        } catch {
+            deleteError = L("error_generic")
+        }
     }
 
     private func deactivate() async {

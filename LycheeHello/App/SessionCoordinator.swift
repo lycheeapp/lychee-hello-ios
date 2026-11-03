@@ -143,6 +143,20 @@ public final class SessionCoordinator {
     /// - Throws: when the server did not deactivate it — the user stays signed in and is told.
     public func deactivateAccount() async throws {
         try await repository.deactivateAccount()
+        await leaveSignedOut()
+    }
+
+    /// Deletes this Lychee Hello account on the server, then signs out here. The server deletes its
+    /// chats and ends every Hello session; an account with no Lychee account is erased. A Lychee
+    /// account and its wallet stay — they are deleted in the Lychee app.
+    /// - Throws: when the server did not delete it — the user stays signed in and is told.
+    public func deleteAccount() async throws {
+        try await repository.deleteAccount()
+        await leaveSignedOut()
+    }
+
+    /// The server ended this account's sessions: forget it here and go back to sign-in.
+    private func leaveSignedOut() async {
         await stopRealtime()
         await TokenStore.shared.clear()
         user = nil

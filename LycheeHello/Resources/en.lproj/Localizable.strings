@@ -383,6 +383,14 @@
 "account_deactivate_confirm_title" = "Deactivate your account?";
 "account_deactivate_confirm_body" = "You'll be signed out of Lychee Hello on all your devices. Your vouchers and any Lychee account are not affected, and you can sign in again any time to reactivate.";
 "account_deactivate_failed" = "Couldn't deactivate your account";
+"account_delete" = "Delete account";
+"account_delete_footer_guest" = "Permanently deletes your Lychee Hello account: your name, your number and your chats. Payments you made are kept as records, and vouchers sent to your number stay usable by their code.";
+"account_delete_footer_lychee" = "Deletes your Lychee Hello account and chats, and signs you out on all your devices. Your Lychee account and wallet are not deleted here — you can delete them in the Lychee app.";
+"account_delete_confirm_title" = "Delete your account?";
+"account_delete_confirm_body_guest" = "This can't be undone. Your name, number and chats will be deleted, and you'll be signed out on all your devices.";
+"account_delete_confirm_body_lychee" = "This can't be undone. Your Lychee Hello chats will be deleted and you'll be signed out on all your devices. Your Lychee account and wallet stay; delete them in the Lychee app.";
+"account_delete_confirm" = "Delete";
+"account_delete_failed" = "Couldn't delete your account";
 "privacy_code_warning" = "Lychee will never ask for your verification code. Don't share it with anyone.";
 "privacy_policy" = "Privacy policy & terms";
 "privacy_policy_footer" = "How Lychee handles your data, on lycheeapp.org.";
