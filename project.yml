@@ -72,6 +72,25 @@ targets:
         product: FirebaseCrashlytics
       - package: Firebase
         product: FirebaseMessaging
+    # A Release build (the App Store archive) without the production signing key would ship an app
+    # that sends unsigned requests, and be locked out once the backend enforces signatures.
+    # showEnvVars is off so the key is never printed into the build log.
+    preBuildScripts:
+      - name: Check release signing key
+        basedOnDependencyAnalysis: false
+        showEnvVars: false
+        script: |
+          if [ "${CONFIGURATION}" = "Release" ]; then
+            if [ -z "${LYCHEE_SIGNING_PRIVATE_KEY}" ]; then
+              echo "error: Release build without the production signing key. Run scripts/make-secrets-xcconfig.sh <key.pem> <key-id> first (README, Request signing)."
+              exit 1
+            fi
+            case "${LYCHEE_SIGNING_KEY_ID}" in
+              ""|REPLACE_AT_BUILD_TIME)
+                echo "error: LYCHEE_SIGNING_KEY_ID is still the placeholder for Release."
+                exit 1;;
+            esac
+          fi
     # Crashlytics needs dSYM upload; added as a build phase once the team id is configured.
     postCompileScripts: []
 

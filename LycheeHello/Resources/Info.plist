@@ -41,6 +41,10 @@
 	<string>$(LYCHEE_SIGNING_CLIENT_ID)</string>
 	<key>LYCHEE_SIGNING_KEY_ID</key>
 	<string>$(LYCHEE_SIGNING_KEY_ID)</string>
+	<!-- Release only: the production signing key, from the gitignored Config/Secrets.xcconfig
+	     (scripts/make-secrets-xcconfig.sh). Empty in Debug, which signs with the test key. -->
+	<key>LYCHEE_SIGNING_PRIVATE_KEY</key>
+	<string>$(LYCHEE_SIGNING_PRIVATE_KEY)</string>
 	<key>LYCHEE_ENVIRONMENT_NAME</key>
 	<string>$(LYCHEE_ENVIRONMENT_NAME)</string>
 	<key>LYCHEE_LOG_NETWORK</key>

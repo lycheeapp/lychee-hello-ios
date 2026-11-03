@@ -117,8 +117,22 @@ Every request carries `X-Lychee-*` signing headers. Two files matter:
 | Debug | `test-key-1` | Committed test key (already public in this repo) |
 | Release | prod key id | **Injected at build time**, never committed |
 
-This differs from `lychee-ios`, which hardcodes its production key in source. Hello loads the
-production key from `LYCHEE_SIGNING_PRIVATE_KEY` and the build fails loudly if it is missing.
+This differs from `lychee-ios`, which hardcodes its production key in source. Hello reads the
+production key from `LYCHEE_SIGNING_PRIVATE_KEY` (Info.plist, from the build setting), and a
+Release build without it stops at the "Check release signing key" build phase.
+
+Before archiving for the App Store, on the build Mac:
+
+```bash
+# RSA-2048, PKCS#1 ("BEGIN RSA PRIVATE KEY"), which RequestSigner reads
+openssl genrsa -traditional -out ~/secure/hello-ios-prod.pem 2048   # Homebrew OpenSSL 3
+# openssl genrsa -out ~/secure/hello-ios-prod.pem 2048              # macOS LibreSSL
+scripts/make-secrets-xcconfig.sh ~/secure/hello-ios-prod.pem <key-id>
+```
+
+That writes the gitignored `Config/Secrets.xcconfig`, which `Release.xcconfig` includes last. The
+key id must match the public key registered on the backend for client `hello-ios`
+(`openssl rsa -in ~/secure/hello-ios-prod.pem -pubout`).
 
 Register the public halves with:
 
