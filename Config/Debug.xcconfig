@@ -12,7 +12,7 @@ SLASH = /
 // Backend (decision U7). There is no staging tier at launch; the abstraction supports adding one
 // without a code change — add Staging.xcconfig and a matching scheme.
 //API_BASE_URL = https:$(SLASH)$(SLASH)apitest.lycheeapp.org/rest/lychee-v2
-API_BASE_URL = https:$(SLASH)$(SLASH)66dc-188-161-134-80.ngrok-free.app/rest/lychee-v2
+API_BASE_URL = https:$(SLASH)$(SLASH)apitest.lycheeapp.org/rest/lychee-v2
 API_HELLO_PATH = /hello/v1
 
 // LYCHEE-SIGN-V1 client identity (decision U4).
