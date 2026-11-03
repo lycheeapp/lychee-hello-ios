@@ -95,6 +95,9 @@ public protocol HelloRepositoryProtocol: Sendable {
     /// Moves this device to another account on the same number (person ↔ business). Saves the
     /// new session token, as sign-in does.
     func switchAccount(to accountType: String) async throws -> SessionResult
+    /// Deactivates this Lychee Hello account: every Hello session of it ends; signing in again
+    /// reactivates it. The Lychee account, wallet and vouchers are untouched.
+    func deactivateAccount() async throws
 
     func generalConversation() async throws -> Conversation
     func conversations() async throws -> [Conversation]
@@ -129,6 +132,7 @@ public protocol HelloRepositoryProtocol: Sendable {
 
 /// Defaults so a test double that has nothing to do with cards need not stub them.
 public extension HelloRepositoryProtocol {
+    func deactivateAccount() async throws { throw APIError.transport("not supported") }
     func wallet() async throws -> Wallet { throw APIError.transport("not supported") }
     func onePaySettings() async throws -> OnePaySettings { throw APIError.transport("not supported") }
     func createOnePay(amount: Double, acceptedTerms: Bool) async throws -> Wallet { throw APIError.transport("not supported") }
@@ -223,6 +227,12 @@ public actor HelloRepository: HelloRepositoryProtocol {
     public func logout() async throws {
         defer { Task { await tokenStore.clear() } }
         try? await api.delete("auth/logout")
+    }
+
+    /// The server ends this session too, so the token is cleared here whatever the answer body.
+    public func deactivateAccount() async throws {
+        let _: EmptyResponse = try await api.post("me/deactivate")
+        await tokenStore.clear()
     }
 
     public func switchAccount(to accountType: String) async throws -> SessionResult {

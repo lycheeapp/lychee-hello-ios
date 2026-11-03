@@ -235,7 +235,7 @@
 "settings_account" = "الحساب والملف الشخصي";
 "settings_account_subtitle" = "البيانات الشخصية ورقم الهاتف";
 "settings_privacy" = "الخصوصية والأمان";
-"settings_privacy_subtitle" = "الحسابات المحظورة والأجهزة المتصلة";
+"settings_privacy_subtitle" = "قفل التطبيق وسياسة الخصوصية";
 "settings_notifications" = "الإشعارات";
 "settings_notifications_subtitle" = "تنبيهات الرسائل والمدفوعات";
 "settings_appearance" = "المظهر";
@@ -246,7 +246,7 @@
 "settings_biometric" = "الدخول بالبصمة";
 "settings_biometric_subtitle" = "استخدم البصمة أو التعرّف على الوجه";
 "settings_help" = "المساعدة والدعم";
-"settings_help_subtitle" = "احصل على المساعدة في Lychee Hello";
+"settings_help_subtitle" = "المساعدة والتواصل على lycheeapp.org";
 "settings_about" = "حول Lychee Hello";
 "settings_about_subtitle" = "الخصوصية والشروط ومعلومات التطبيق";
 "settings_log_out" = "تسجيل الخروج";
@@ -367,6 +367,39 @@
 
 /* Settings pages, guests, deactivation, card QR codes */
 "chat_balance_vouchers" = "رصيد القسائم";
+"common_save" = "حفظ";
+"account_name" = "الاسم";
+"account_phone" = "رقم الهاتف";
+"account_type" = "الحساب";
+"account_guest" = "حساب Lychee Hello";
+"account_guest_title" = "احصل على محفظة Lychee الكاملة";
+"account_guest_body" = "أنت تستخدم Lychee Hello بدون حساب Lychee. يمكنك الدفع بالقسائم المرسلة إلى رقمك. للاحتفاظ برصيد وإنشاء القسائم والدفع عبر نقطة البيع، ثبّت تطبيق Lychee وسجّل فيه.";
+"account_guest_get_app" = "احصل على تطبيق Lychee";
+"account_name_footer_guest" = "هكذا يظهر اسمك عندما تدفع. اضغط على اسمك لتغييره.";
+"account_name_footer_business" = "اسم نشاطك التجاري تديره Lychee.";
+"account_name_footer_lychee" = "اسمك من حساب Lychee الخاص بك. يمكنك تغييره من تطبيق Lychee.";
+"account_deactivate" = "إلغاء تفعيل الحساب";
+"account_deactivate_footer" = "يسجّل خروجك من Lychee Hello على جميع أجهزتك ويوقف رسائله وإشعاراته. تبقى قسائمك وأي حساب Lychee كما هي. سجّل الدخول مجددًا برقمك لإعادة التفعيل.";
+"account_deactivate_confirm_title" = "إلغاء تفعيل حسابك؟";
+"account_deactivate_confirm_body" = "سيتم تسجيل خروجك من Lychee Hello على جميع أجهزتك. لا تتأثر قسائمك ولا أي حساب Lychee، ويمكنك تسجيل الدخول مجددًا في أي وقت لإعادة التفعيل.";
+"account_deactivate_failed" = "تعذّر إلغاء تفعيل حسابك";
+"privacy_code_warning" = "لن تطلب منك Lychee رمز التحقق أبدًا. لا تشاركه مع أي أحد.";
+"privacy_policy" = "سياسة الخصوصية والشروط";
+"privacy_policy_footer" = "كيف تتعامل Lychee مع بياناتك، على lycheeapp.org.";
+"notifications_on" = "الإشعارات مفعّلة";
+"notifications_off" = "الإشعارات متوقفة";
+"notifications_on_body" = "سنُعلمك بالمدفوعات فور حدوثها.";
+"notifications_off_body" = "لن يتم إعلامك عند وصول دفعة أو اكتمالها. فعّلها من الإعدادات.";
+"notifications_turn_on" = "تفعيل الإشعارات";
+"notifications_open_settings" = "فتح إعدادات الإشعارات";
+"notifications_kinds_header" = "ما يُعلمك به Lychee Hello";
+"notifications_kind_received" = "الأموال التي تستلمها";
+"notifications_kind_payments" = "المدفوعات التي تجريها عند اكتمالها";
+"notifications_kind_messages" = "ردود Lychee في المحادثة";
+"about_version" = "الإصدار %1$@ (%2$@)";
+"about_body" = "ادفع وتحقق من رصيدك واستخدم قسائمك عبر المحادثة — بسرعة وسهولة وأمان.";
+"about_website" = "lycheeapp.org";
+"about_copyright" = "© %1$@ Lychee. جميع الحقوق محفوظة.";
 "cards_qr_title" = "امسح للدفع";
 "cards_qr_body" = "اعرض هذا الرمز في المتجر. اضغط على البطاقة لقلبها مجددًا.";
 "cards_qr_show" = "يعرض رمز QR للقسيمة";

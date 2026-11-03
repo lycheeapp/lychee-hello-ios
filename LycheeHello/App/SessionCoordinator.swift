@@ -91,6 +91,11 @@ public final class SessionCoordinator {
         isChoosingAccount = accounts.count > 1
     }
 
+    /// After the name was changed in Settings (a guest's): the same account, renamed.
+    public func didUpdateProfile(_ updated: HelloUser) {
+        user = updated
+    }
+
     /// After onboarding completes.
     public func didCompleteOnboarding(_ updated: HelloUser) async {
         user = updated
@@ -131,6 +136,22 @@ public final class SessionCoordinator {
             accountSwitchError = L("settings_switch_failed_body")
             if route == .signedIn { await startRealtime() }
         }
+    }
+
+    /// Deactivates this Lychee Hello account on the server, then signs out here. The server ends
+    /// every Hello session of the account; signing in again with the number reactivates it.
+    /// - Throws: when the server did not deactivate it — the user stays signed in and is told.
+    public func deactivateAccount() async throws {
+        try await repository.deactivateAccount()
+        await stopRealtime()
+        await TokenStore.shared.clear()
+        user = nil
+        balance = nil
+        capabilities = Capabilities()
+        accounts = []
+        isChoosingAccount = false
+        CrashReporter.setUser(id: nil)
+        route = .signedOut
     }
 
     public func signOut() async {

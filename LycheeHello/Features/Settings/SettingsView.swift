@@ -8,12 +8,12 @@ import SwiftUI
 struct SettingsView: View {
 
     @Environment(SessionCoordinator.self) private var coordinator
-    @AppStorage("biometricLoginEnabled") private var biometricLogin = true
     @AppStorage(CardsModel.confirmBeforePayingKey) private var confirmBeforePaying = true
     @AppStorage(AppLanguage.storageKey) private var languageRaw = AppLanguage.system.rawValue
     /// Applied at once by `AppAppearanceApplier` at the root — nothing restarts.
     @AppStorage(AppAppearance.storageKey) private var appearanceRaw = AppAppearance.system.rawValue
     @State private var showSignOutConfirm = false
+    @State private var browsing: BrowsedPage?
     /// Opens the Pay sheet for a payee from a receipt in the history.
     var onPay: (PayeeRef) -> Void = { _ in }
 
@@ -74,9 +74,21 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    row(L("settings_account"), L("settings_account_subtitle"), "person")
-                    row(L("settings_privacy"), L("settings_privacy_subtitle"), "lock.shield")
-                    row(L("settings_notifications"), L("settings_notifications_subtitle"), "bell")
+                    NavigationLink {
+                        AccountProfileView()
+                    } label: {
+                        row(L("settings_account"), L("settings_account_subtitle"), "person")
+                    }
+                    NavigationLink {
+                        PrivacySecurityView()
+                    } label: {
+                        row(L("settings_privacy"), L("settings_privacy_subtitle"), "lock.shield")
+                    }
+                    NavigationLink {
+                        NotificationsSettingsView()
+                    } label: {
+                        row(L("settings_notifications"), L("settings_notifications_subtitle"), "bell")
+                    }
                 }
 
                 Section {
@@ -92,24 +104,9 @@ struct SettingsView: View {
                     Text(L("settings_appearance_note"))
                 }
 
-                Section {
-                    Toggle(isOn: $biometricLogin) {
-                        Label {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(L("settings_biometric")).font(Tokens.Typography.body)
-                                Text(L("settings_biometric_use", BiometricGate.biometryName))
-                                    .font(Tokens.Typography.caption)
-                                    .foregroundStyle(Tokens.Colour.textSecondary)
-                            }
-                        } icon: {
-                            Image(systemName: "faceid").foregroundStyle(Tokens.Colour.navy)
-                        }
-                    }
-                    .tint(Tokens.Colour.brand)
-                }
-
-                // Paying at a POS from the Cards tab — which a business account does not have.
-                if coordinator.user?.isBusiness != true {
+                // Paying at a POS from the Cards tab — which a business account does not have, and
+                // which needs a Lychee account (a guest pays at a store by the voucher's QR code).
+                if coordinator.user?.isBusiness != true && coordinator.user?.isGuest != true {
                     Section {
                         Toggle(isOn: $confirmBeforePaying) {
                             Label {
@@ -130,8 +127,23 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    row(L("settings_help"), L("settings_help_subtitle"), "questionmark.circle")
-                    row(L("settings_about"), L("settings_about_subtitle"), "info.circle")
+                    // Help is the Lychee website, opened in the app.
+                    Button {
+                        browsing = BrowsedPage(url: LycheeLinks.website)
+                    } label: {
+                        HStack {
+                            row(L("settings_help"), L("settings_help_subtitle"), "questionmark.circle")
+                            Spacer()
+                            Image(systemName: "arrow.up.forward")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(Tokens.Colour.textSecondary.opacity(0.6))
+                        }
+                    }
+                    NavigationLink {
+                        AboutView()
+                    } label: {
+                        row(L("settings_about"), L("settings_about_subtitle"), "info.circle")
+                    }
                 }
 
                 Section {
@@ -162,6 +174,9 @@ struct SettingsView: View {
         } message: {
             Text(coordinator.accountSwitchError ?? "")
         }
+        .sheet(item: $browsing) { page in
+            SafariView(url: page.url).ignoresSafeArea()
+        }
         .confirmationDialog(L("settings_log_out_confirm"),
                             isPresented: $showSignOutConfirm,
                             titleVisibility: .visible) {
@@ -189,9 +204,11 @@ struct SettingsView: View {
                     Text(accountLine)
                         .font(Tokens.Typography.caption)
                         .foregroundStyle(Tokens.Colour.textOnDark.opacity(0.85))
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Tokens.Colour.brand)
+                    if coordinator.user?.isGuest != true {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(Tokens.Colour.brand)
+                    }
                 }
             }
             Spacer()
@@ -206,6 +223,7 @@ struct SettingsView: View {
     /// "Verified Lychee account", or which account this is when the number has two.
     private var accountLine: String {
         guard let user = coordinator.user else { return L("account_verified") }
+        if user.isGuest { return L("account_guest") }
         if user.isBusiness {
             if let code = user.accountCode, !code.isEmpty { return L("account_business_code", code) }
             return L("account_business")
@@ -240,8 +258,7 @@ struct SettingsView: View {
         }
     }
 
-    /// Placeholder destinations. Wired as non-navigating rows rather than dead `NavigationLink`s so
-    /// the UI never promises a screen that does not exist.
+    /// A settings row: icon, title and a line under it.
     private func row(_ title: String, _ subtitle: String, _ systemImage: String) -> some View {
         Label {
             VStack(alignment: .leading, spacing: 2) {

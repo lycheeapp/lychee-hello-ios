@@ -235,7 +235,7 @@
 "settings_account" = "Account & profile";
 "settings_account_subtitle" = "Personal details and phone number";
 "settings_privacy" = "Privacy & security";
-"settings_privacy_subtitle" = "Blocked accounts and connected devices";
+"settings_privacy_subtitle" = "App lock and privacy policy";
 "settings_notifications" = "Notifications";
 "settings_notifications_subtitle" = "Messages and payment alerts";
 "settings_appearance" = "Appearance";
@@ -246,7 +246,7 @@
 "settings_biometric" = "Biometric login";
 "settings_biometric_subtitle" = "Use fingerprint or face unlock";
 "settings_help" = "Help & support";
-"settings_help_subtitle" = "Get help with Lychee Hello";
+"settings_help_subtitle" = "Help and contact on lycheeapp.org";
 "settings_about" = "About Lychee Hello";
 "settings_about_subtitle" = "Privacy, terms and app information";
 "settings_log_out" = "Log out";
@@ -367,6 +367,39 @@
 
 /* Settings pages, guests, deactivation, card QR codes */
 "chat_balance_vouchers" = "Voucher balance";
+"common_save" = "Save";
+"account_name" = "Name";
+"account_phone" = "Phone number";
+"account_type" = "Account";
+"account_guest" = "Lychee Hello account";
+"account_guest_title" = "Get the full Lychee wallet";
+"account_guest_body" = "You're using Lychee Hello without a Lychee account. You can pay with the vouchers sent to your number. To keep a balance, create vouchers and pay at a POS, install the Lychee app and register.";
+"account_guest_get_app" = "Get the Lychee app";
+"account_name_footer_guest" = "This is how you appear when you pay. Tap your name to change it.";
+"account_name_footer_business" = "Your business name is managed by Lychee.";
+"account_name_footer_lychee" = "Your name comes from your Lychee account. Change it in the Lychee app.";
+"account_deactivate" = "Deactivate account";
+"account_deactivate_footer" = "Signs you out of Lychee Hello on all your devices and stops its messages and notifications. Your vouchers and any Lychee account stay as they are. Sign in again with your number to reactivate.";
+"account_deactivate_confirm_title" = "Deactivate your account?";
+"account_deactivate_confirm_body" = "You'll be signed out of Lychee Hello on all your devices. Your vouchers and any Lychee account are not affected, and you can sign in again any time to reactivate.";
+"account_deactivate_failed" = "Couldn't deactivate your account";
+"privacy_code_warning" = "Lychee will never ask for your verification code. Don't share it with anyone.";
+"privacy_policy" = "Privacy policy & terms";
+"privacy_policy_footer" = "How Lychee handles your data, on lycheeapp.org.";
+"notifications_on" = "Notifications are on";
+"notifications_off" = "Notifications are off";
+"notifications_on_body" = "You'll be told about payments as they happen.";
+"notifications_off_body" = "You won't be told when a payment arrives or completes. Turn them on in Settings.";
+"notifications_turn_on" = "Turn on notifications";
+"notifications_open_settings" = "Open notification settings";
+"notifications_kinds_header" = "What Lychee Hello notifies you about";
+"notifications_kind_received" = "Money you receive";
+"notifications_kind_payments" = "Payments you make, when they complete";
+"notifications_kind_messages" = "Replies from Lychee in the chat";
+"about_version" = "Version %1$@ (%2$@)";
+"about_body" = "Pay, check your balance and use your vouchers by chat — fast, simple and secure.";
+"about_website" = "lycheeapp.org";
+"about_copyright" = "© %1$@ Lychee. All rights reserved.";
 "cards_qr_title" = "Scan to pay";
 "cards_qr_body" = "Show this code at the store. Tap the card to turn it back.";
 "cards_qr_show" = "Shows the voucher's QR code";
