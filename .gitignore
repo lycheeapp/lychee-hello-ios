@@ -26,4 +26,5 @@ Package.resolved
 Config/Secrets.xcconfig
 *.p12
 *.mobileprovision
-*-prod.pem
+# Any PEM: private keys must never be committed, whatever they are named.
+*.pem

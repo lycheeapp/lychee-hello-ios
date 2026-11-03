@@ -29,7 +29,7 @@ if [ ! -f "$pem" ]; then
 fi
 if [ "$(head -1 "$pem")" != "-----BEGIN RSA PRIVATE KEY-----" ]; then
   echo "error: $pem is not a PKCS#1 RSA key (first line must be -----BEGIN RSA PRIVATE KEY-----)." >&2
-  echo "       Convert it with: openssl rsa -traditional -in $pem -out hello-ios-prod-pkcs1.pem" >&2
+  echo "       Convert it next to the original (outside the repo): openssl rsa -traditional -in $pem -out ${pem%.pem}-pkcs1.pem" >&2
   echo "       (with macOS's built-in LibreSSL, drop -traditional)" >&2
   exit 65
 fi
