@@ -364,3 +364,6 @@
 "settings_confirm_pos" = "التأكيد قبل الدفع في نقطة البيع";
 "settings_confirm_pos_subtitle" = "اختر البطاقة واضغط ادفع في كل مرة";
 "settings_confirm_pos_footer" = "عند الإيقاف، تدفع البطاقة الأمامية فور قراءة نقطة البيع. وإذا لم تستطع دفع هذا الطلب، تختار البطاقة كالمعتاد.";
+
+/* Settings pages, guests, deactivation, card QR codes */
+"chat_balance_vouchers" = "رصيد القسائم";

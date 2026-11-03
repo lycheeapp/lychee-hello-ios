@@ -136,6 +136,11 @@ public struct WalletBalance: Decodable, Sendable, Equatable {
     /// Authoritative gate for payment affordances — a wallet can hold funds and still be
     /// SUSPENDED (decision D7). Never infer payability from `amount`.
     public let payable: Bool
+    /// `WALLET`, or `VOUCHERS` for an account with no wallet (no Lychee account): the amount is the
+    /// vouchers sent to the number added up, and it is never "activating".
+    public var source: String? = nil
+
+    public var isVouchers: Bool { source?.uppercased() == "VOUCHERS" }
 }
 
 // MARK: - Chat

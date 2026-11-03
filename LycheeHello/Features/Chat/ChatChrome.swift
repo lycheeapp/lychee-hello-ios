@@ -102,31 +102,43 @@ struct ChatHeaderTitle: View {
 /// The balance, pinned under the navigation bar the way WhatsApp pins a message.
 ///
 /// Replaces the large balance card: the conversation gets the space back, and the figure is still
-/// one glance away. A suspended wallet says so here (decision D7) — a visible balance would
-/// otherwise read as spendable.
+/// one glance away — set large enough to read at that glance. A suspended wallet says so here
+/// (decision D7) — a visible balance would otherwise read as spendable. An account with no wallet
+/// (no Lychee account) shows what its vouchers add up to, and is never "activating".
 struct PinnedBalanceBar: View {
     let balance: WalletBalance?
     let isHidden: Bool
     let onToggleHidden: () -> Void
 
+    @ScaledMetric(relativeTo: .title3) private var iconSize: CGFloat = 20
+
+    private var isVouchers: Bool { balance?.isVouchers == true }
     /// Unknown until the first fetch lands; do not claim "activating" before we know.
-    private var isPayable: Bool { balance?.payable ?? true }
+    private var isPayable: Bool { isVouchers || (balance?.payable ?? true) }
+
+    private var label: String {
+        if isVouchers { return L("chat_balance_vouchers") }
+        return isPayable ? L("chat_balance_available") : L("chat_balance_activating")
+    }
 
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "wallet.pass.fill")
-                .font(.system(size: 17))
+        HStack(spacing: 12) {
+            Image(systemName: isVouchers ? "ticket.fill" : "wallet.pass.fill")
+                .font(.system(size: iconSize))
                 .foregroundStyle(Tokens.Chat.success)
-                .frame(width: 28)
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(Tokens.Chat.success.opacity(0.12)))
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(isPayable ? L("chat_balance_available") : L("chat_balance_activating"))
-                    .font(.caption)
+                Text(label)
+                    .font(.footnote)
                     .foregroundStyle(isPayable ? Tokens.Chat.meta : Tokens.Colour.danger)
                 Text(isHidden ? "••••" : Money.format(balance?.amount))
-                    .font(.subheadline.weight(.semibold))
+                    .font(.title3.weight(.bold))
                     .monospacedDigit()
                     .foregroundStyle(Tokens.Chat.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                     .contentTransition(.numericText())
                     .animation(.snappy, value: balance?.amount)
             }
@@ -137,7 +149,7 @@ struct PinnedBalanceBar: View {
 
             Button(action: onToggleHidden) {
                 Image(systemName: isHidden ? "eye.slash" : "eye")
-                    .font(.system(size: 16))
+                    .font(.system(size: 18))
                     .foregroundStyle(Tokens.Chat.meta)
                     .frame(width: Tokens.Hit.minimum, height: Tokens.Hit.minimum)
                     .contentShape(Rectangle())
@@ -145,9 +157,10 @@ struct PinnedBalanceBar: View {
             .buttonStyle(.plain)
             .accessibilityLabel(isHidden ? L("chat_balance_show") : L("chat_balance_hide"))
         }
-        .padding(.leading, 14)
+        .padding(.leading, 12)
         .padding(.trailing, 4)
-        .frame(minHeight: 48)
+        .padding(.vertical, 6)
+        .frame(minHeight: 60)
         .background(Tokens.Chat.bar)
         .overlay(alignment: .bottom) {
             Rectangle().fill(Tokens.Chat.barHairline).frame(height: 0.5)

@@ -364,3 +364,6 @@
 "settings_confirm_pos" = "Confirm before paying at a POS";
 "settings_confirm_pos_subtitle" = "Choose the card and tap Pay each time";
 "settings_confirm_pos_footer" = "When off, the card in front pays as soon as the POS is read. If it can't pay that request, you choose as usual.";
+
+/* Settings pages, guests, deactivation, card QR codes */
+"chat_balance_vouchers" = "Voucher balance";
