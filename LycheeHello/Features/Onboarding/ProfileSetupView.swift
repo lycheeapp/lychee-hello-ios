@@ -70,16 +70,13 @@ struct ProfileSetupView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: Tokens.Spacing.xl) {
-                    VStack(alignment: .leading, spacing: Tokens.Spacing.sm) {
-                        Text(L("profile_title"))
-                            .font(Tokens.Typography.largeTitle)
-                            .foregroundStyle(Tokens.Colour.textPrimary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(L("profile_subtitle_ios"))
-                            .font(Tokens.Typography.body)
-                            .foregroundStyle(Tokens.Colour.textSecondary)
-                    }
-                    .padding(.top, Tokens.Spacing.xxl)
+                    // No "What should we call you?" heading: the line below says it, and the fields
+                    // are the screen.
+                    Text(L("profile_subtitle_ios"))
+                        .font(Tokens.Typography.body)
+                        .foregroundStyle(Tokens.Colour.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, Tokens.Spacing.xxl)
 
                     field(title: L("profile_first_name"), text: $model.firstName, field: .first, content: .givenName)
                     field(title: L("profile_last_name"), text: $model.lastName, field: .last, content: .familyName)
