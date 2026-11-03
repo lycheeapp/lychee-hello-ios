@@ -66,6 +66,15 @@ public final class ChatModel {
     /// A refresh that arrived mid-send; replayed once the send settles.
     private var refreshDeferred = false
 
+    /// The load in flight, owned by the model rather than by the screen that asked for it.
+    ///
+    /// SwiftUI cancels a view's `.task` whenever the view leaves the screen, even for a moment — as
+    /// the chat does while the tabs are rebuilt for the account just switched to. The request then
+    /// came back cancelled, was shown as "Something went wrong", and the one-at-a-time guard skipped
+    /// the load the reappearing screen asked for, so the alert stayed. A load the model owns runs to
+    /// the end whatever the screen does, as the Android app's view-model scope does.
+    private var loadTask: Task<Void, Never>?
+
     private let repository: HelloRepositoryProtocol
 
     public init(repository: HelloRepositoryProtocol) {
@@ -93,14 +102,29 @@ public final class ChatModel {
 
     public func load() async {
         // One load at a time: the screen's own load and a refresh arriving before the conversation
-        // is known would otherwise both ask for the thread at once.
-        guard !isLoading else { return }
+        // is known would otherwise both ask for the thread at once. A second caller waits for the
+        // load in flight instead of being turned away.
+        if let loadTask {
+            await loadTask.value
+            return
+        }
+        let task = Task {
+            await self.performLoad()
+            self.loadTask = nil
+        }
+        loadTask = task
+        await task.value
+    }
+
+    private func performLoad() async {
         isLoading = true
         defer { isLoading = false }
         do {
             let conversation = try await repository.generalConversation()
             conversationId = conversation.id
             try await refreshMessages(conversationId: conversation.id, animated: false)
+        } catch is CancellationError {
+            // Nobody is waiting for this answer; the next load asks again.
         } catch let error as APIError {
             CrashReporter.recordAPIFailure(endpoint: "conversations/general", error: error)
             errorMessage = error.userMessage
@@ -112,7 +136,7 @@ public final class ChatModel {
     /// Re-reads the transcript. Called on realtime hints and on foreground.
     public func refresh() async {
         guard let conversationId else {
-            if !isLoading { await load() }
+            await load()
             return
         }
         // A refresh landing mid-send would race the send's response: the server already holds the

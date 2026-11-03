@@ -74,6 +74,8 @@ final class CardsModel {
         error = nil
         do {
             apply(try await repository.wallet(), bringToFront: nil)
+        } catch is CancellationError {
+            // The screen went away mid-load; it loads again when it comes back.
         } catch let failure as APIError {
             error = failure.userMessage
         } catch {

@@ -211,6 +211,10 @@ public actor APIClient {
             (data, response) = try await session.data(for: request)
         } catch let error as URLError {
             switch error.code {
+            case .cancelled:
+                // The task that asked was cancelled — typically its screen went away — so nobody is
+                // waiting for an answer. Not a failure to show: callers treat it as cancellation.
+                throw CancellationError()
             case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed:
                 throw APIError.offline
             case .timedOut:
