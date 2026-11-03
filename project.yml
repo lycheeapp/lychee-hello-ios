@@ -50,7 +50,7 @@ targets:
     # registration silently targets the wrong app.
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: org.lycheeapp.lychee-hello
+        PRODUCT_BUNDLE_IDENTIFIER: org.lycheeapp.hello
         PRODUCT_NAME: Lychee Hello
         INFOPLIST_FILE: LycheeHello/Resources/Info.plist
         # Push Notifications (aps-environment: without it APNs never issues a token, so FCM has
@@ -103,7 +103,7 @@ targets:
       - target: LycheeHello
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: org.lycheeapp.lychee-hello.tests
+        PRODUCT_BUNDLE_IDENTIFIER: org.lycheeapp.hello.tests
         # XcodeGen derives the test host from the target name, but the app's product is
         # "Lychee Hello" (PRODUCT_NAME above), so the derived path points at a bundle that is never
         # built and the tests cannot launch.

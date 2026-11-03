@@ -86,7 +86,7 @@ Removing it silently truncates the base URL to `https:`.
 ⚠️ **Bundle id must match the plist exactly.** The plist declares:
 
 ```
-BUNDLE_ID = org.lycheeapp.lychee-hello
+BUNDLE_ID = org.lycheeapp.hello
 ```
 
 `project.yml` sets `PRODUCT_BUNDLE_IDENTIFIER` to the same value. If they diverge, FCM registration
