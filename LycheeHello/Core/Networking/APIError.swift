@@ -24,6 +24,10 @@ public enum HelloErrorCode: String, Sendable {
     case paymentIntentNotActionable = "PAYMENT_INTENT_NOT_ACTIONABLE"
     case paymentIntentExpired = "PAYMENT_INTENT_EXPIRED"
     case paymentFailed = "PAYMENT_FAILED"
+    /// A name the server would not take; its message says why, in the app's language.
+    case invalidName = "INVALID_NAME"
+    /// Needs a Lychee account (the user has none): the message points to the Lychee app.
+    case lycheeAccountRequired = "LYCHEE_ACCOUNT_REQUIRED"
     case internalError = "INTERNAL_ERROR"
     case unknown = "UNKNOWN"
 

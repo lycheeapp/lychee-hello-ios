@@ -27,6 +27,10 @@ public struct HelloUser: Decodable, Sendable, Equatable, Identifiable {
     /// Signed in as a business rather than as a person.
     public var isBusiness: Bool { accountType == Account.business }
 
+    /// Signed in with no Lychee account: pays from the vouchers sent to the number, has no wallet.
+    /// The Lychee app is where full access is.
+    public var isGuest: Bool { accountType == Account.guest }
+
     /// Screenshot shows "Talal Raddad" — first + last (decision D6).
     public var resolvedDisplayName: String {
         if let displayName, !displayName.isEmpty { return displayName }
@@ -63,6 +67,8 @@ public struct SessionResult: Decodable, Sendable {
 public struct Account: Decodable, Sendable, Equatable, Hashable, Identifiable {
     public static let person = "MOBILE_USER"
     public static let business = "SERVICE_PROVIDER"
+    /// A number with no Lychee account.
+    public static let guest = "HELLO_GUEST"
 
     public let type: String
     public let name: String?
@@ -96,20 +102,24 @@ public struct Capabilities: Decodable, Sendable, Equatable {
     public var withdraw: Bool = false
     /// `topup <phone> <amount> <pin>`: an operator's balance top-up for a customer.
     public var topUp: Bool = false
+    /// Create OnePay vouchers: a person's Lychee account only.
+    public var createVoucher: Bool = false
 
-    public init(withdraw: Bool = false, topUp: Bool = false) {
+    public init(withdraw: Bool = false, topUp: Bool = false, createVoucher: Bool = false) {
         self.withdraw = withdraw
         self.topUp = topUp
+        self.createVoucher = createVoucher
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         withdraw = try container.decodeIfPresent(Bool.self, forKey: .withdraw) ?? false
         topUp = try container.decodeIfPresent(Bool.self, forKey: .topUp) ?? false
+        createVoucher = try container.decodeIfPresent(Bool.self, forKey: .createVoucher) ?? false
     }
 
     private enum CodingKeys: String, CodingKey {
-        case withdraw, topUp
+        case withdraw, topUp, createVoucher
     }
 }
 

@@ -43,7 +43,9 @@ public final class ProfileSetupModel {
             // The backend enforces full-name uniqueness (`ensureFullNameIsUnique`), so a common
             // name can legitimately be rejected. Generic copy would leave the user stuck retrying
             // the same value, so the guidance is explicit.
-            errorMessage = error.code == .internalError || error.code == .unknown
+            // The server says what is wrong with a name it refuses (`INVALID_NAME`), in the app's
+            // language; anything unexpected gets the generic guidance.
+            errorMessage = error.code == .internalError || error.code == .unknown || error.code == .invalidVerificationCode
                 ? L("profile_error_name")
                 : error.userMessage
         } catch {
