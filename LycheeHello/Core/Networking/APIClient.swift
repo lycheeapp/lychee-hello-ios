@@ -233,8 +233,14 @@ public actor APIClient {
         case 200..<300:
             return data
         case 401:
-            await tokenStore.clear()
-            await onUnauthorized?()
+            // Only the session this request was made with is dead. Switching accounts replaces the
+            // token while requests made with the old one are still in flight; their 401s must not
+            // clear the new token and sign the user out of the account they just switched to.
+            let sentWith = request.value(forHTTPHeaderField: "Authorization-Token")
+            if await tokenStore.token() == sentWith {
+                await tokenStore.clear()
+                await onUnauthorized?()
+            }
             throw APIError.unauthorized
         default:
             let envelope = try? decoder.decode(APIErrorEnvelope.self, from: data)

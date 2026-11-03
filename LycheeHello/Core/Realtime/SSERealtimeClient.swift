@@ -139,8 +139,13 @@ public final class SSERealtimeClient: RealtimeClient, @unchecked Sendable {
             throw APIError.transport("Non-HTTP response on event stream")
         }
         if http.statusCode == 401 {
-            // Do not retry: reconnecting with a dead token would loop forever.
-            await tokenStore.clear()
+            // Do not retry: reconnecting with a dead token would loop forever. Clear it only if it
+            // is still the current one — after an account switch the stream of the account left
+            // behind gets a 401, and that must not sign out the account switched to.
+            let sentWith = request.value(forHTTPHeaderField: "Authorization-Token")
+            if await tokenStore.token() == sentWith {
+                await tokenStore.clear()
+            }
             statusContinuation.yield(.idle)
             throw APIError.unauthorized
         }

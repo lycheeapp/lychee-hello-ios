@@ -105,9 +105,11 @@ public final class SessionCoordinator {
         guard !isSwitchingAccount, !account.current else { return }
         isSwitchingAccount = true
         defer { isSwitchingAccount = false }
+        // Close the event stream first: the switch ends the session it was opened with, and a
+        // reconnect racing the switch would be refused with the old token.
+        await stopRealtime()
         do {
             let result = try await repository.switchAccount(to: account.type)
-            await stopRealtime()
             user = result.user
             accounts = result.accounts ?? []
             balance = nil
@@ -118,12 +120,16 @@ public final class SessionCoordinator {
             } else {
                 await enterSignedIn()
             }
-            chatInvalidationToken = UUID()
+            // No chat refresh here: the tabs are rebuilt for the new account (MainTabView keys
+            // them on the user), and the new chat loads itself. A refresh on top of that load asked
+            // for the new account's thread twice at once.
         } catch let error as APIError {
             CrashReporter.recordAPIFailure(endpoint: "auth/switch-account", error: error)
             accountSwitchError = error.userMessage
+            if route == .signedIn { await startRealtime() }
         } catch {
             accountSwitchError = L("settings_switch_failed_body")
+            if route == .signedIn { await startRealtime() }
         }
     }
 
