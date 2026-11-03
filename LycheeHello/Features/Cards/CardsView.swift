@@ -1,4 +1,6 @@
+import CoreImage.CIFilterBuiltins
 import SwiftUI
+import UIKit
 
 /// Card geometry, shared by the stack and its sheets.
 enum CardGeometry {
@@ -69,6 +71,8 @@ struct CardsView: View {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 80)
                 } else if model.wallet == nil {
                     loadError
+                } else if model.cards.isEmpty {
+                    emptyState
                 } else {
                     CardStack(cards: model.cards) { id in
                         selectionTick += 1
@@ -76,7 +80,11 @@ struct CardsView: View {
                             model.select(id)
                         }
                     }
-                    readerPanel
+                    if coordinator.user?.isGuest == true {
+                        guestPanel
+                    } else {
+                        readerPanel
+                    }
                 }
             }
             .padding(.horizontal, Tokens.Spacing.lg)
@@ -150,6 +158,46 @@ struct CardsView: View {
         .padding(.top, 60)
     }
 
+    /// No cards: an account with no Lychee balance (no Lychee account) and no vouchers yet.
+    private var emptyState: some View {
+        VStack(spacing: Tokens.Spacing.sm) {
+            Image(systemName: "ticket")
+                .font(.system(size: 40))
+                .foregroundStyle(Tokens.Colour.brand)
+            Text(L("cards_empty_title"))
+                .font(Tokens.Typography.headline)
+                .foregroundStyle(Tokens.Colour.textPrimary)
+            Text(L("cards_empty_body"))
+                .font(.subheadline)
+                .foregroundStyle(Tokens.Colour.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(Tokens.Spacing.xl)
+        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Tokens.Colour.surfaceElevated))
+        .padding(.top, Tokens.Spacing.lg)
+    }
+
+    /// No Lychee account: paying a POS from the phone needs one, so the way to pay at a store is the
+    /// voucher's QR code — the card in front turns over to show it.
+    private var guestPanel: some View {
+        VStack(spacing: Tokens.Spacing.sm) {
+            Image(systemName: "qrcode.viewfinder")
+                .font(.system(size: 34))
+                .foregroundStyle(Tokens.Colour.brand)
+            Text(L("cards_guest_title"))
+                .font(Tokens.Typography.headline)
+                .foregroundStyle(Tokens.Colour.textPrimary)
+            Text(L("cards_guest_body"))
+                .font(.subheadline)
+                .foregroundStyle(Tokens.Colour.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(Tokens.Spacing.lg)
+        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Tokens.Colour.surfaceElevated))
+    }
+
     /// What happens next: tap Pay at a POS and hold the iPhone near it — or why it cannot.
     private var readerPanel: some View {
         VStack(spacing: Tokens.Spacing.sm) {
@@ -180,6 +228,10 @@ struct CardsView: View {
                     .font(.caption)
                     .foregroundStyle(Tokens.Colour.danger)
                     .multilineTextAlignment(.center)
+            } else if model.selected?.hasQRCode == true {
+                Text(L("cards_qr_hint"))
+                    .font(.caption)
+                    .foregroundStyle(Tokens.Colour.textSecondary)
             } else if model.cards.count > 1 {
                 Text(L("cards_selected_hint"))
                     .font(.caption)
@@ -213,12 +265,19 @@ extension CardsModel {
 /// them. Offsets animate per card, so when two cards trade places each slides to the other's slot;
 /// the card coming forward is drawn above everything for the whole move — it lifts out of the stack
 /// rather than passing behind it.
+///
+/// Tapping the card in front turns it over when it is a voucher: its back is the voucher's QR code
+/// and full code, for the store to scan. Tapping again turns it back. Choosing another card turns
+/// the front one back first, so the stack is never left showing a code.
 struct CardStack: View {
     let cards: [WalletCard]
     let onSelect: (String) -> Void
 
     /// The card being brought forward: it grows a touch as it lifts out, then settles.
     @State private var lifted: String?
+    /// The front card, turned to show its QR code.
+    @State private var flipped: String?
+    @State private var flipTick = 0
 
     var body: some View {
         let behind = max(cards.count - 1, 0)
@@ -226,24 +285,42 @@ struct CardStack: View {
         ZStack(alignment: .top) {
             ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
                 let front = index == cards.count - 1
+                let showsQR = front && flipped == card.id
                 WalletCardView(card: card, expanded: front)
+                    .modifier(CardFlip(angle: showsQR ? 180 : 0, back: VoucherQRBack(card: card, live: front)))
                     .shadow(color: CardPalette.glow(card).opacity(front ? 0.45 : 0.18),
                             radius: front ? 18 : 4, y: front ? 10 : 2)
                     .scaleEffect(lifted == card.id ? 1.04 : (front ? 1 : 0.995))
                     .offset(y: front ? frontTop : CGFloat(index) * CardGeometry.peek)
                     .zIndex(front ? 1000 : Double(index))
-                    .onTapGesture { choose(card.id, front: front) }
+                    .onTapGesture { tap(card, front: front) }
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(CardCopy.accessibility(card, selected: front))
+                    .accessibilityLabel(showsQR ? L("cards_qr_a11y", card.code ?? "") : CardCopy.accessibility(card, selected: front))
                     .accessibilityAddTraits(front ? [.isButton, .isSelected] : .isButton)
+                    .accessibilityHint(front && card.hasQRCode ? L(showsQR ? "cards_qr_hide" : "cards_qr_show") : "")
             }
         }
         .frame(height: frontTop + CardGeometry.height, alignment: .top)
         .frame(maxWidth: .infinity)
+        .sensoryFeedback(.impact(weight: .light), trigger: flipTick)
+        // The card in front changed (a refresh, another card chosen): show its face.
+        .onChange(of: cards.last?.id) { _, _ in flipped = nil }
     }
 
-    private func choose(_ id: String, front: Bool) {
-        guard !front else { return }
+    private func tap(_ card: WalletCard, front: Bool) {
+        guard front else {
+            choose(card.id)
+            return
+        }
+        guard card.hasQRCode else { return }
+        flipTick += 1
+        withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) {
+            flipped = flipped == card.id ? nil : card.id
+        }
+    }
+
+    private func choose(_ id: String) {
+        flipped = nil
         withAnimation(.spring(response: 0.22, dampingFraction: 0.7)) { lifted = id }
         onSelect(id)
         Task {
@@ -252,6 +329,132 @@ struct CardStack: View {
                 if lifted == id { lifted = nil }
             }
         }
+    }
+}
+
+extension WalletCard {
+    /// A voucher with a code — OnePay or a store's — can be paid by scanning it, so it turns over to
+    /// a QR code. The balance has no code.
+    var hasQRCode: Bool {
+        guard cardKind == .onePay || cardKind == .store else { return false }
+        return !(code ?? "").trimmingCharacters(in: .whitespaces).isEmpty
+    }
+}
+
+/// Turns a card over around its vertical axis. Animatable, so the face swaps exactly when the card
+/// is edge-on (90°) — not by cross-fading two faces through the whole turn.
+private struct CardFlip<Back: View>: ViewModifier, Animatable {
+    var angle: Double
+    let back: Back
+
+    var animatableData: Double {
+        get { angle }
+        set { angle = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        let showingBack = angle > 90
+        ZStack {
+            content
+                .opacity(showingBack ? 0 : 1)
+            back
+                // Pre-turned, so it reads the right way round once the card is over.
+                .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+                .opacity(showingBack ? 1 : 0)
+                .allowsHitTesting(showingBack)
+        }
+        .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
+    }
+}
+
+/// The back of a voucher: its QR code — the bare code, as on the voucher card sent by WhatsApp — and
+/// the code written out, so the store can scan it or type it.
+struct VoucherQRBack: View {
+    let card: WalletCard
+    /// Only the front card can turn over; the ones behind skip making a QR code nobody will see.
+    var live = true
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: CardGeometry.corner, style: .continuous)
+        ZStack {
+            shape.fill(CardPalette.gradient(card))
+            HStack(spacing: 16) {
+                Group {
+                    if live, card.hasQRCode, let image = QRCodeImages.image(for: card.code ?? "") {
+                        Image(uiImage: image)
+                            .interpolation(.none)
+                            .resizable()
+                            .scaledToFit()
+                    } else {
+                        Image(systemName: "qrcode").font(.system(size: 60))
+                    }
+                }
+                .padding(10)
+                .frame(width: 150, height: 150)
+                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(.white))
+                .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(L("cards_qr_title"))
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.white)
+                    Text(L("cards_qr_body"))
+                        .font(.system(size: 12))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    // Left to right in Arabic too.
+                    Text("\u{2066}\(QRCodeImages.spaced(card.code ?? ""))\u{2069}")
+                        .font(.system(size: 16, weight: .semibold).monospaced())
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                        .environment(\.layoutDirection, .leftToRight)
+                    Text(Money.format(card.balance))
+                        .font(.system(size: 13, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            }
+            .padding(18)
+        }
+        .frame(height: CardGeometry.height)
+        .overlay(shape.strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5))
+        .contentShape(shape)
+    }
+}
+
+/// QR codes for voucher codes, made once each: the flip redraws the back on every frame.
+@MainActor
+enum QRCodeImages {
+    private static var cache: [String: UIImage] = [:]
+    private static let context = CIContext()
+
+    static func image(for text: String) -> UIImage? {
+        let code = text.trimmingCharacters(in: .whitespaces)
+        guard !code.isEmpty else { return nil }
+        if let cached = cache[code] { return cached }
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = Data(code.utf8)
+        filter.correctionLevel = "M"
+        guard let output = filter.outputImage else { return nil }
+        // Whole-number scale and no smoothing: crisp modules a scanner reads at any size.
+        let scaled = output.transformed(by: CGAffineTransform(scaleX: 12, y: 12))
+        guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else { return nil }
+        let image = UIImage(cgImage: cgImage)
+        cache[code] = image
+        return image
+    }
+
+    /// "AB12CD34" → "AB12 CD34": easier to read out and type.
+    static func spaced(_ code: String) -> String {
+        var out = ""
+        for (index, character) in code.enumerated() {
+            if index > 0 && index % 4 == 0 { out.append(" ") }
+            out.append(character)
+        }
+        return out
     }
 }
 
@@ -333,6 +536,16 @@ struct WalletCardView: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(Capsule().fill(.black.opacity(0.28)))
+                }
+                Spacer(minLength: 0)
+                if card.hasQRCode {
+                    // Says the card turns over to its QR code; the whole card is the button.
+                    Image(systemName: "qrcode")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 32, height: 32)
+                        .background(Circle().fill(.white.opacity(0.18)))
+                        .accessibilityHidden(true)
                 }
             }
             .padding(.top, 2)

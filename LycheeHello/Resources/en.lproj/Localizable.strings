@@ -367,3 +367,13 @@
 
 /* Settings pages, guests, deactivation, card QR codes */
 "chat_balance_vouchers" = "Voucher balance";
+"cards_qr_title" = "Scan to pay";
+"cards_qr_body" = "Show this code at the store. Tap the card to turn it back.";
+"cards_qr_show" = "Shows the voucher's QR code";
+"cards_qr_hide" = "Turns the card back";
+"cards_qr_a11y" = "QR code for voucher %1$@";
+"cards_qr_hint" = "Tap the card to show its QR code.";
+"cards_empty_title" = "No vouchers yet";
+"cards_empty_body" = "Vouchers sent to your number appear here. You can pay with them in the chat or show their QR code at a store.";
+"cards_guest_title" = "Pay at a store";
+"cards_guest_body" = "Tap the card in front to show its QR code, and the cashier scans it. Paying by tapping a POS needs the Lychee app.";
