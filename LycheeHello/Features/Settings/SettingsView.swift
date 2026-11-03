@@ -129,7 +129,7 @@ struct SettingsView: View {
                 Section {
                     // Help is the Lychee website, opened in the app.
                     Button {
-                        browsing = BrowsedPage(url: LycheeLinks.website)
+                        browsing = BrowsedPage(url: LycheeLinks.help)
                     } label: {
                         HStack {
                             row(L("settings_help"), L("settings_help_subtitle"), "questionmark.circle")

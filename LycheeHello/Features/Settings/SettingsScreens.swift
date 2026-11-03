@@ -9,6 +9,9 @@ import UserNotifications
 /// Where Help, the privacy policy and "get the Lychee app" point.
 enum LycheeLinks {
     static let website = URL(string: "https://lycheeapp.org/")!
+    /// Help & support: the questions people ask, and how to reach Lychee.
+    static let help = URL(string: "https://lycheeapp.org/faq")!
+    static let privacy = URL(string: "https://lycheeapp.org/privacy")!
 }
 
 // MARK: - In-app browser
@@ -302,7 +305,7 @@ struct PrivacySecurityView: View {
 
             Section {
                 Button {
-                    browsing = BrowsedPage(url: LycheeLinks.website)
+                    browsing = BrowsedPage(url: LycheeLinks.privacy)
                 } label: {
                     Label {
                         Text(L("privacy_policy")).foregroundStyle(Tokens.Colour.textPrimary)
@@ -451,8 +454,8 @@ struct AboutView: View {
             }
 
             Section {
-                linkRow(L("about_website"), "globe")
-                linkRow(L("privacy_policy"), "hand.raised")
+                linkRow(L("about_website"), "globe", LycheeLinks.website)
+                linkRow(L("privacy_policy"), "hand.raised", LycheeLinks.privacy)
             } footer: {
                 Text(L("about_copyright", String(Calendar.current.component(.year, from: Date()))))
             }
@@ -467,9 +470,9 @@ struct AboutView: View {
         }
     }
 
-    private func linkRow(_ title: String, _ systemImage: String) -> some View {
+    private func linkRow(_ title: String, _ systemImage: String, _ url: URL) -> some View {
         Button {
-            browsing = BrowsedPage(url: LycheeLinks.website)
+            browsing = BrowsedPage(url: url)
         } label: {
             Label {
                 HStack {
