@@ -279,10 +279,7 @@ struct WalletCardView: View {
     private var header: some View {
         HStack(spacing: 6) {
             LycheeMark(size: 30, color: .white)
-            Text("Lychee")
-                .font(.system(size: 22, weight: .bold))
-                .kerning(-0.3)
-                .foregroundStyle(.white)
+            LycheeWordmark(height: 21, color: .white)
             Spacer(minLength: 10)
             if let from = card.from, !from.isEmpty {
                 Text(from.bidiIsolated)
