@@ -148,6 +148,12 @@ public struct WalletBalance: Decodable, Sendable, Equatable {
 public enum MessageDirection: String, Decodable, Sendable {
     case inbound = "INBOUND"    // from the user
     case outbound = "OUTBOUND"  // from Lychee
+
+    /// Anything else is drawn as Lychee's: a value a newer server adds must not stop the chat opening.
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = MessageDirection(rawValue: raw) ?? .outbound
+    }
 }
 
 public enum MessageType: String, Decodable, Sendable {
@@ -172,6 +178,12 @@ public enum MessageStatus: String, Decodable, Sendable {
     case delivered = "DELIVERED"
     case read = "READ"
     case failed = "FAILED"
+
+    /// A status this app does not know is still one the server holds: drawn as sent.
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = MessageStatus(rawValue: raw) ?? .sent
+    }
 }
 
 public struct ChatMessage: Decodable, Sendable, Equatable, Identifiable {
@@ -299,6 +311,36 @@ public struct Conversation: Decodable, Sendable, Equatable, Identifiable {
 public struct MessagePage: Decodable, Sendable {
     public let messages: [ChatMessage]
     public let nextCursor: String?
+
+    public init(messages: [ChatMessage], nextCursor: String?) {
+        self.messages = messages
+        self.nextCursor = nextCursor
+    }
+
+    private enum CodingKeys: String, CodingKey { case messages, nextCursor }
+
+    /// A message this app cannot read is left out, not the whole page: one undecodable row used to
+    /// fail the load, and the chat would not open at all. The Android app reads the same rows
+    /// leniently; this keeps the two alike.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let rows = try container.decodeIfPresent([LossyDecodable<ChatMessage>].self, forKey: .messages) ?? []
+        messages = rows.compactMap(\.value)
+        nextCursor = try container.decodeIfPresent(String.self, forKey: .nextCursor)
+        let skipped = rows.count - messages.count
+        if skipped > 0 {
+            CrashReporter.log("chat page: skipped \(skipped) message(s) this app could not read")
+        }
+    }
+}
+
+/// One element of a list that is kept when it decodes and dropped (nil) when it does not.
+struct LossyDecodable<Value: Decodable>: Decodable {
+    let value: Value?
+
+    init(from decoder: Decoder) throws {
+        value = try? Value(from: decoder)
+    }
 }
 
 // MARK: - Payments
