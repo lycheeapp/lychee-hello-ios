@@ -104,9 +104,9 @@ struct SettingsView: View {
                     Text(L("settings_appearance_note"))
                 }
 
-                // Paying at a POS from the Cards tab — which a business account does not have, and
-                // which needs a Lychee account (a guest pays at a store by the voucher's QR code).
-                if coordinator.user?.isBusiness != true && coordinator.user?.isGuest != true {
+                // Paying at a POS from the Cards tab — which a business account does not have. A guest
+                // pays with the vouchers sent to their number, so the choice is theirs too.
+                if coordinator.user?.isBusiness != true {
                     Section {
                         Toggle(isOn: $confirmBeforePaying) {
                             Label {

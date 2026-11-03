@@ -373,7 +373,7 @@
 "account_type" = "Account";
 "account_guest" = "Lychee Hello account";
 "account_guest_title" = "Get the full Lychee wallet";
-"account_guest_body" = "You're using Lychee Hello without a Lychee account. You can pay with the vouchers sent to your number. To keep a balance, create vouchers and pay at a POS, install the Lychee app and register.";
+"account_guest_body" = "You're using Lychee Hello without a Lychee account. You pay with the vouchers sent to your number — in the chat, or by tapping a Lychee POS. To keep a balance and create vouchers, install the Lychee app and register.";
 "account_guest_get_app" = "Get the Lychee app";
 "account_name_footer_guest" = "This is how you appear when you pay. Tap your name to change it.";
 "account_name_footer_business" = "Your business name is managed by Lychee.";
@@ -407,6 +407,4 @@
 "cards_qr_a11y" = "QR code for voucher %1$@";
 "cards_qr_hint" = "Tap the card to show its QR code.";
 "cards_empty_title" = "No vouchers yet";
-"cards_empty_body" = "Vouchers sent to your number appear here. You can pay with them in the chat or show their QR code at a store.";
-"cards_guest_title" = "Pay at a store";
-"cards_guest_body" = "Tap the card in front to show its QR code, and the cashier scans it. Paying by tapping a POS needs the Lychee app.";
+"cards_empty_body" = "Vouchers sent to your number appear here. Pay with them in the chat, by tapping a Lychee POS, or by showing their QR code at a store.";

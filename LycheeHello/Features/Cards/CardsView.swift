@@ -80,11 +80,8 @@ struct CardsView: View {
                             model.select(id)
                         }
                     }
-                    if coordinator.user?.isGuest == true {
-                        guestPanel
-                    } else {
-                        readerPanel
-                    }
+                    // Everyone with cards pays a POS by tapping — a guest with the vouchers sent to them.
+                    readerPanel
                 }
             }
             .padding(.horizontal, Tokens.Spacing.lg)
@@ -176,26 +173,6 @@ struct CardsView: View {
         .padding(Tokens.Spacing.xl)
         .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Tokens.Colour.surfaceElevated))
         .padding(.top, Tokens.Spacing.lg)
-    }
-
-    /// No Lychee account: paying a POS from the phone needs one, so the way to pay at a store is the
-    /// voucher's QR code — the card in front turns over to show it.
-    private var guestPanel: some View {
-        VStack(spacing: Tokens.Spacing.sm) {
-            Image(systemName: "qrcode.viewfinder")
-                .font(.system(size: 34))
-                .foregroundStyle(Tokens.Colour.brand)
-            Text(L("cards_guest_title"))
-                .font(Tokens.Typography.headline)
-                .foregroundStyle(Tokens.Colour.textPrimary)
-            Text(L("cards_guest_body"))
-                .font(.subheadline)
-                .foregroundStyle(Tokens.Colour.textSecondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(Tokens.Spacing.lg)
-        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Tokens.Colour.surfaceElevated))
     }
 
     /// What happens next: tap Pay at a POS and hold the iPhone near it — or why it cannot.
