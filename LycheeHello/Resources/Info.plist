@@ -18,6 +18,10 @@
 	<string>1.0.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<!-- Export compliance: the only encryption is HTTPS through Apple's frameworks and request
+	     signatures (authentication), both exempt. Saves answering the question on every upload. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 
 	<!-- Arabic is the primary market (+970 / ₪ / Arabic backend templates), so the app must
 	     support RTL from day one rather than retrofitting it. -->
