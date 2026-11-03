@@ -92,6 +92,9 @@ public final class ChatModel {
     // MARK: - Loading
 
     public func load() async {
+        // One load at a time: the screen's own load and a refresh arriving before the conversation
+        // is known would otherwise both ask for the thread at once.
+        guard !isLoading else { return }
         isLoading = true
         defer { isLoading = false }
         do {
@@ -109,7 +112,7 @@ public final class ChatModel {
     /// Re-reads the transcript. Called on realtime hints and on foreground.
     public func refresh() async {
         guard let conversationId else {
-            await load()
+            if !isLoading { await load() }
             return
         }
         // A refresh landing mid-send would race the send's response: the server already holds the

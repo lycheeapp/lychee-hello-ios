@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// The General Chat, laid out like a WhatsApp conversation: avatar header, pinned balance,
 /// wallpaper, tailed bubbles with inline time and ticks, day chips, and a "+" composer.
@@ -69,13 +70,37 @@ struct ChatView: View {
                         scrollToBottom(proxy, animated: true)
                     }
                 }
-                .onChange(of: composerFocused) { _, focused in
-                    guard focused, isAtBottom else { return }
-                    // Let the keyboard start moving first, then ride up with it.
+                // Opening the keyboard to type moves the conversation up with it, as WhatsApp does:
+                // the latest message stays just above the composer instead of the keyboard covering
+                // the middle of the chat. Done on the keyboard's own notifications — the transcript
+                // has shrunk by then — and once more when it has finished moving.
+                .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+                    guard composerFocused else { return }
                     Task {
-                        try? await Task.sleep(for: .milliseconds(80))
+                        await Task.yield()
                         scrollToBottom(proxy, animated: true)
                     }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
+                    guard composerFocused else { return }
+                    scrollToBottom(proxy, animated: false)
+                }
+                // Focus can land a moment after the keyboard's first notification.
+                .onChange(of: composerFocused) { _, focused in
+                    guard focused else { return }
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(120))
+                        scrollToBottom(proxy, animated: true)
+                    }
+                }
+                // The first page has landed: start at the latest message. Without this the transcript
+                // could sit on an empty stretch until the user scrolled or sent something.
+                .onChange(of: model.isLoading) { wasLoading, isLoading in
+                    guard wasLoading, !isLoading else { return }
+                    settleAtBottom(proxy)
+                }
+                .onAppear {
+                    if !model.messages.isEmpty { settleAtBottom(proxy) }
                 }
         }
         .background { ChatWallpaper().ignoresSafeArea() }
@@ -147,9 +172,14 @@ struct ChatView: View {
 
     // MARK: - Transcript
 
+    /// A plain `VStack`, not a `LazyVStack`: rows are made eagerly, so the scroll view always knows
+    /// the real height of what it holds. With lazy rows it guessed, and anchored to the bottom it
+    /// could show a blank stretch after loading (until a scroll or a send forced the rows in), and a
+    /// scroll to the latest message — the arrow — fell short or did nothing. History arrives a page
+    /// at a time, so the transcript stays a size an eager stack handles easily.
     private func transcript(_ proxy: ScrollViewProxy) -> some View {
         ScrollView {
-            LazyVStack(spacing: 0) {
+            VStack(spacing: 0) {
                 header(proxy)
 
                 ForEach(ChatRowBuilder.rows(for: model.messages, aliases: model.rowAliases)) { row in
@@ -355,6 +385,16 @@ struct ChatView: View {
             if let anchor {
                 proxy.scrollTo(anchor, anchor: .top)
             }
+        }
+    }
+
+    /// Scrolls to the latest message now, and again after the next layout pass: rows that just
+    /// arrived are measured during it, and a single scroll could stop short of them.
+    private func settleAtBottom(_ proxy: ScrollViewProxy) {
+        scrollToBottom(proxy, animated: false)
+        Task {
+            try? await Task.sleep(for: .milliseconds(60))
+            scrollToBottom(proxy, animated: false)
         }
     }
 
