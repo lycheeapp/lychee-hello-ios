@@ -112,6 +112,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.lycheeapp.hello.tests
+        # The test bundle has no Info.plist of its own; without this Xcode cannot sign it and the
+        # tests do not build ("does not have an Info.plist file").
+        GENERATE_INFOPLIST_FILE: YES
         # XcodeGen derives the test host from the target name, but the app's product is
         # "Lychee Hello" (PRODUCT_NAME above), so the derived path points at a bundle that is never
         # built and the tests cannot launch.
