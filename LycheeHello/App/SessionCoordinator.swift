@@ -1,12 +1,13 @@
 import Foundation
 import Observation
+import LycheeHelloKit
 
 /// Owns the app's top-level state: who is signed in, and which flow should be on screen.
 ///
 /// Single source of truth for routing so no screen decides for itself whether the user is
-/// authenticated. It also owns the realtime connection lifecycle, because that is scoped to a
-/// session rather than to any one screen — a stream started by the chat screen would die when the
-/// user visits Settings.
+/// authenticated. What the Chats and Cards need — the user, the balance, the menu, and the realtime
+/// connection, which is scoped to a session rather than to any one screen — lives in `kit`, the
+/// Lychee Hello kit's session, which this fills in from sign-in and starts and stops with it.
 @Observable
 @MainActor
 public final class SessionCoordinator {
@@ -22,16 +23,20 @@ public final class SessionCoordinator {
     }
 
     public private(set) var route: Route = .launching
-    public private(set) var user: HelloUser?
-    public private(set) var balance: WalletBalance?
+
+    /// The kit's session: put in the environment above the Chats and Cards.
+    public let kit: HelloKitSession
+
+    public var user: HelloUser? { kit.user }
+    public var balance: WalletBalance? { kit.balance }
 
     /// Whether payments are permitted. Driven by the server's `payable` flag, never by balance
     /// (decision D7 — a wallet can hold funds and still be suspended).
-    public var canPay: Bool { balance?.payable ?? false }
+    public var canPay: Bool { kit.canPay }
 
     /// The WhatsApp commands beyond paying that this account may use (`GET /me`). Decides what the
     /// "+" menu offers; the server checks again on every request.
-    public private(set) var capabilities = Capabilities()
+    public var capabilities: Capabilities { kit.capabilities }
 
     /// Every account on this number (sign-in, `/me`). Most numbers have one; a person who also runs
     /// a business on it has two, and Settings offers a switch.
@@ -47,19 +52,10 @@ public final class SessionCoordinator {
     public var accountSwitchError: String?
 
     private let repository: HelloRepositoryProtocol
-    private let realtime: RealtimeClient
-    private let dedup = RealtimeDeduplicator()
-
-    private var realtimeTask: Task<Void, Never>?
-    private var statusTask: Task<Void, Never>?
-
-    /// Bumped whenever something invalidates chat state, so the chat screen can refetch without
-    /// the coordinator knowing anything about chat.
-    public private(set) var chatInvalidationToken = UUID()
 
     public init(repository: HelloRepositoryProtocol, realtime: RealtimeClient = SSERealtimeClient()) {
         self.repository = repository
-        self.realtime = realtime
+        self.kit = HelloKitSession(repository: repository, realtime: realtime)
     }
 
     // MARK: - Lifecycle
@@ -79,7 +75,7 @@ public final class SessionCoordinator {
 
     /// After a successful OTP verification.
     public func didAuthenticate(_ result: SessionResult) async {
-        user = result.user
+        kit.setUser(result.user)
         accounts = result.accounts ?? []
         CrashReporter.setUser(id: result.user?.id)
 
@@ -93,12 +89,12 @@ public final class SessionCoordinator {
 
     /// After the name was changed in Settings (a guest's): the same account, renamed.
     public func didUpdateProfile(_ updated: HelloUser) {
-        user = updated
+        kit.setUser(updated)
     }
 
     /// After onboarding completes.
     public func didCompleteOnboarding(_ updated: HelloUser) async {
-        user = updated
+        kit.setUser(updated)
         await enterSignedIn()
         isChoosingAccount = accounts.count > 1
     }
@@ -112,13 +108,12 @@ public final class SessionCoordinator {
         defer { isSwitchingAccount = false }
         // Close the event stream first: the switch ends the session it was opened with, and a
         // reconnect racing the switch would be refused with the old token.
-        await stopRealtime()
+        await kit.stopRealtime()
         do {
             let result = try await repository.switchAccount(to: account.type)
-            user = result.user
+            kit.setUser(result.user)
             accounts = result.accounts ?? []
-            balance = nil
-            capabilities = Capabilities()
+            kit.resetAccountState()
             CrashReporter.setUser(id: result.user?.id)
             if result.requiresOnboarding {
                 route = .onboarding
@@ -131,10 +126,10 @@ public final class SessionCoordinator {
         } catch let error as APIError {
             CrashReporter.recordAPIFailure(endpoint: "auth/switch-account", error: error)
             accountSwitchError = error.userMessage
-            if route == .signedIn { await startRealtime() }
+            if route == .signedIn { await kit.startRealtime() }
         } catch {
             accountSwitchError = L("settings_switch_failed_body")
-            if route == .signedIn { await startRealtime() }
+            if route == .signedIn { await kit.startRealtime() }
         }
     }
 
@@ -157,11 +152,8 @@ public final class SessionCoordinator {
 
     /// The server ended this account's sessions: forget it here and go back to sign-in.
     private func leaveSignedOut() async {
-        await stopRealtime()
+        await kit.stop()
         await TokenStore.shared.clear()
-        user = nil
-        balance = nil
-        capabilities = Capabilities()
         accounts = []
         isChoosingAccount = false
         CrashReporter.setUser(id: nil)
@@ -169,11 +161,9 @@ public final class SessionCoordinator {
     }
 
     public func signOut() async {
-        await stopRealtime()
+        await kit.stopRealtime()
         try? await repository.logout()
-        user = nil
-        balance = nil
-        capabilities = Capabilities()
+        await kit.stop()
         accounts = []
         isChoosingAccount = false
         CrashReporter.setUser(id: nil)
@@ -185,8 +175,8 @@ public final class SessionCoordinator {
     private func loadSession() async {
         do {
             let session = try await repository.currentUser()
-            user = session.user
-            capabilities = session.capabilities ?? Capabilities()
+            kit.setUser(session.user)
+            kit.setCapabilities(session.capabilities ?? Capabilities())
             accounts = session.accounts ?? []
             CrashReporter.setUser(id: session.user?.id)
             if session.requiresOnboarding {
@@ -201,14 +191,14 @@ public final class SessionCoordinator {
             // surface their own failures. Forcing a sign-out here would be hostile — the session is
             // probably still valid.
             route = .signedIn
-            await startRealtime()
+            await kit.startRealtime()
         }
     }
 
     private func enterSignedIn() async {
         route = .signedIn
-        await refreshBalance()
-        await startRealtime()
+        await kit.refreshBalance()
+        await kit.startRealtime()
         syncPushTokenWhenAvailable()
         await refreshCapabilities()
     }
@@ -218,7 +208,7 @@ public final class SessionCoordinator {
     public func refreshCapabilities() async {
         guard let session = try? await repository.currentUser() else { return }
         if let fresh = session.capabilities {
-            capabilities = fresh
+            kit.setCapabilities(fresh)
         }
         if let fresh = session.accounts {
             accounts = fresh
@@ -253,19 +243,11 @@ public final class SessionCoordinator {
     }
 
     public func refreshBalance() async {
-        do {
-            balance = try await repository.walletBalance()
-        } catch let error as APIError {
-            CrashReporter.recordAPIFailure(endpoint: "wallet/balance", error: error)
-        } catch {
-            // Non-fatal; the card shows its last known value.
-        }
+        await kit.refreshBalance()
     }
 
     private func handleUnauthorized() async {
-        await stopRealtime()
-        user = nil
-        balance = nil
+        await kit.stop()
         accounts = []
         route = .signedOut
     }
@@ -273,66 +255,6 @@ public final class SessionCoordinator {
     /// Push tap: the payload is untrusted, so re-read authoritative state.
     public func refreshAfterPush() async {
         guard route == .signedIn else { return }
-        await refreshBalance()
-        chatInvalidationToken = UUID()
-    }
-
-    // MARK: - Realtime
-
-    private func startRealtime() async {
-        await stopRealtime()
-
-        realtimeTask = Task { [weak self] in
-            guard let self else { return }
-            for await event in self.realtime.events {
-                guard await self.dedup.shouldApply(event) else { continue }
-                await self.apply(event)
-            }
-        }
-
-        statusTask = Task { [weak self] in
-            guard let self else { return }
-            for await status in self.realtime.statusUpdates {
-                await self.handle(status: status)
-            }
-        }
-
-        await realtime.connect(resumingFrom: nil)
-    }
-
-    private func stopRealtime() async {
-        realtimeTask?.cancel(); realtimeTask = nil
-        statusTask?.cancel(); statusTask = nil
-        await realtime.disconnect()
-    }
-
-    /// Every event is a **hint**: re-read the authoritative resource rather than rendering the
-    /// payload.
-    private func apply(_ event: RealtimeEvent) async {
-        switch event.type {
-        case .balanceInvalidated:
-            await refreshBalance()
-        case .messageCreated, .paymentIntentUpdated:
-            chatInvalidationToken = UUID()
-            if event.type == .paymentIntentUpdated {
-                // A settled payment moves money; the balance card must not lag behind the receipt.
-                await refreshBalance()
-            }
-        case .unknown:
-            break
-        }
-    }
-
-    private func handle(status: RealtimeStatus) async {
-        switch status {
-        case .needsResync:
-            // Fell too far behind to replay — discard and refetch wholesale.
-            chatInvalidationToken = UUID()
-            await refreshBalance()
-        case let .waitingToRetry(retryIn):
-            CrashReporter.recordRealtimeDrop(reason: "retry in \(Int(retryIn))s")
-        case .connected, .connecting, .idle:
-            break
-        }
+        await kit.refreshAfterPush()
     }
 }

@@ -10,6 +10,8 @@ struct LycheeHelloApp: App {
     @AppStorage(AppLanguage.storageKey) private var languageRaw = AppLanguage.system.rawValue
 
     init() {
+        // Before any screen or request: the Chats and Cards call the API through the kit.
+        HelloKit.configure(host: HelloAppKitHost())
         AppLanguage.applyToUIKit()
     }
 
@@ -22,6 +24,8 @@ struct LycheeHelloApp: App {
                 // Light, dark or the phone's — Settings → Appearance.
                 .modifier(AppAppearanceApplier())
                 .environment(coordinator)
+                // What the kit's Chats and Cards read: the user, balance, menu and chat refreshes.
+                .environment(coordinator.kit)
                 .task { await coordinator.start() }
                 .onChange(of: scenePhase) { _, phase in
                     // Returning to foreground: re-read authoritative state. The realtime stream may

@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import UIKit
+import LycheeHelloKit
 
 /// The language the app is shown in.
 ///
@@ -95,10 +96,13 @@ public enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// A string in the app's language, from `Localizable.strings`. With arguments, the string is a
-/// format (`%@`, `%d`, or positional `%1$@`), filled with Western digits whatever the language.
+/// A string in the app's language, from `Localizable.strings` — or, for a string the Chats and
+/// Cards share with the rest of the app, from the Lychee Hello kit's. With arguments, the string is
+/// a format (`%@`, `%d`, or positional `%1$@`), filled with Western digits whatever the language.
 public func L(_ key: String, _ arguments: CVarArg...) -> String {
-    let format = AppLanguage.bundle.localizedString(forKey: key, value: nil, table: nil)
+    let missing = "\u{1}"
+    var format = AppLanguage.bundle.localizedString(forKey: key, value: missing, table: nil)
+    if format == missing { format = HelloKitStrings.localized(key) }
     guard !arguments.isEmpty else { return format }
     return String(format: format, locale: nil, arguments: arguments)
 }

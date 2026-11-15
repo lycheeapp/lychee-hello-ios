@@ -37,6 +37,10 @@ packages:
     url: https://github.com/firebase/firebase-ios-sdk
     minVersion: 11.0.0
     maxVersion: 12.0.0
+  # The Chats and Cards, shared with the Lychee app. A local checkout beside this one until it has
+  # a repository of its own; then a `url:` with a version.
+  LycheeHelloKit:
+    path: ../lychee-hello-kit-ios
 
 configFiles:
   Debug: Config/Debug.xcconfig
@@ -52,6 +56,9 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.lycheeapp.hello
         PRODUCT_NAME: Lychee Hello
+        # The product's name has a space; without this the module is "Lychee_Hello" and the tests'
+        # `@testable import LycheeHello` cannot find it.
+        PRODUCT_MODULE_NAME: LycheeHello
         INFOPLIST_FILE: LycheeHello/Resources/Info.plist
         # Push Notifications (aps-environment: without it APNs never issues a token, so FCM has
         # nothing to deliver to) and NFC Tag Reading (paying at a Lychee POS from the Cards tab).
@@ -68,6 +75,7 @@ targets:
         excludes:
           - "Resources/Info.plist"
     dependencies:
+      - package: LycheeHelloKit
       - package: Firebase
         product: FirebaseCrashlytics
       - package: Firebase
@@ -104,6 +112,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.lycheeapp.hello.tests
+        # The test bundle has no Info.plist of its own; without this Xcode cannot sign it and the
+        # tests do not build ("does not have an Info.plist file").
+        GENERATE_INFOPLIST_FILE: YES
         # XcodeGen derives the test host from the target name, but the app's product is
         # "Lychee Hello" (PRODUCT_NAME above), so the derived path points at a bundle that is never
         # built and the tests cannot launch.

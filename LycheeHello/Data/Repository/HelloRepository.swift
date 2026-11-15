@@ -1,7 +1,8 @@
 import Foundation
 import Security
+import LycheeHelloKit
 
-/// Request bodies for the Hello API.
+/// Request bodies for sign-in and the session. The Chats and Cards have theirs in the kit.
 enum HelloRequests {
 
     struct OtpRequest: Encodable {
@@ -36,60 +37,18 @@ enum HelloRequests {
     struct SwitchAccount: Encodable {
         let accountType: String
     }
-
-    struct CreateOnePay: Encodable {
-        let amount: Double
-        /// The user ticked the terms and the expiry date.
-        let acceptedTerms: Bool
-    }
-
-    struct TapPay: Encodable {
-        /// The tag URL's `p` parameter, verbatim.
-        let payload: String
-        let cardId: String
-    }
-
-    struct SendMessage: Encodable {
-        let text: String?
-        let form: PaymentForm?
-        let clientMessageId: String?
-        /// "Withdraw to bank" — the server composes the WhatsApp command `<IBAN> [amount]`.
-        var withdrawal: WithdrawalForm? = nil
-        /// Operator top-up — the server composes `topup <phone> <amount> <pin>`.
-        var topUp: TopUpForm? = nil
-
-        struct PaymentForm: Encodable {
-            let payee: String
-            let voucherCode: String?
-            let amount: Double
-        }
-
-        /// A missing amount withdraws the whole available balance, as on WhatsApp.
-        struct WithdrawalForm: Encodable {
-            let iban: String
-            let amount: Double?
-        }
-
-        /// The PIN is checked by the server and redacted before the message is stored.
-        struct TopUpForm: Encodable {
-            let recipientPhone: String
-            let amount: Double
-            let pin: String
-        }
-    }
 }
 
-/// Everything the app can ask the Hello backend to do.
+/// Everything the app can ask the Hello backend to do: sign-in and the session here, and the
+/// Chats and Cards from the Lychee Hello kit's repository.
 ///
 /// A protocol so features depend on behaviour rather than on `APIClient`, which keeps view models
 /// testable without a network and lets the transport change underneath.
-public protocol HelloRepositoryProtocol: Sendable {
+public protocol HelloRepositoryProtocol: HelloKitRepositoryProtocol {
     func requestOtp(phoneNumber: String, countryCode: String) async throws -> OtpRequestResult
     func verifyOtp(phoneNumber: String, countryCode: String, code: String,
                    pushToken: String) async throws -> SessionResult
-    func currentUser() async throws -> SessionResult
     func updateProfile(firstName: String, lastName: String) async throws -> HelloUser
-    func walletBalance() async throws -> WalletBalance
     func registerPushToken(_ token: String) async throws
     func logout() async throws
     /// Moves this device to another account on the same number (person ↔ business). Saves the
@@ -101,47 +60,12 @@ public protocol HelloRepositoryProtocol: Sendable {
     /// Deletes this Lychee Hello account: its chats go and every Hello session of it ends; an account
     /// with no Lychee account is erased. A Lychee account and its wallet are not deleted here.
     func deleteAccount() async throws
-
-    func generalConversation() async throws -> Conversation
-    func conversations() async throws -> [Conversation]
-    func messages(conversationId: String, before: String?, limit: Int) async throws -> MessagePage
-    func sendText(conversationId: String, text: String, clientMessageId: String) async throws -> SendMessageResult
-    func sendPaymentForm(conversationId: String, payee: String, voucherCode: String?,
-                         amount: Double, clientMessageId: String) async throws -> SendMessageResult
-    func sendWithdrawalForm(conversationId: String, iban: String, amount: Double?,
-                            clientMessageId: String) async throws -> SendMessageResult
-    func sendTopUpForm(conversationId: String, recipientPhone: String, amount: Double, pin: String,
-                       clientMessageId: String) async throws -> SendMessageResult
-
-    func paymentIntent(id: String) async throws -> PaymentIntent
-    /// The payment awaiting confirmation, if any. `nil` is a normal answer, not an error.
-    func pendingPaymentIntent() async throws -> PaymentIntent?
-    func confirmPayment(intentId: String, idempotencyKey: String) async throws -> PaymentIntent
-    func cancelPayment(intentId: String) async throws -> PaymentIntent
-
-    // Payees and history: read-only. Paying still goes through the chat.
-    func directory(query: String?, page: Int) async throws -> DirectoryPage
-    func lookupPayee(_ payee: String) async throws -> PayeeLookup
-    func recentPayees() async throws -> [RecentPayee]
-    func paymentHistory(query: String?, before: Int64?) async throws -> HistoryPage
-
-    // Cards: the balance and vouchers, a new OnePay voucher, paying a POS's tap-to-pay tag.
-    func wallet() async throws -> Wallet
-    func onePaySettings() async throws -> OnePaySettings
-    func createOnePay(amount: Double, acceptedTerms: Bool) async throws -> Wallet
-    func tapPreview(payload: String) async throws -> TapPreview
-    func tapPay(payload: String, cardId: String) async throws -> TapReceipt
 }
 
-/// Defaults so a test double that has nothing to do with cards need not stub them.
+/// Defaults so a test double that has nothing to do with the account need not stub them.
 public extension HelloRepositoryProtocol {
     func deactivateAccount() async throws { throw APIError.transport("not supported") }
     func deleteAccount() async throws { throw APIError.transport("not supported") }
-    func wallet() async throws -> Wallet { throw APIError.transport("not supported") }
-    func onePaySettings() async throws -> OnePaySettings { throw APIError.transport("not supported") }
-    func createOnePay(amount: Double, acceptedTerms: Bool) async throws -> Wallet { throw APIError.transport("not supported") }
-    func tapPreview(payload: String) async throws -> TapPreview { throw APIError.transport("not supported") }
-    func tapPay(payload: String, cardId: String) async throws -> TapReceipt { throw APIError.transport("not supported") }
 }
 
 public actor HelloRepository: HelloRepositoryProtocol {
@@ -149,6 +73,8 @@ public actor HelloRepository: HelloRepositoryProtocol {
     private let api: APIClient
     private let tokenStore: TokenStore
     private let deviceInfo: DeviceInfoProviding
+    /// The Chats and Cards' calls.
+    private let kit: HelloKitRepository
 
     public init(
         api: APIClient = .shared,
@@ -158,6 +84,7 @@ public actor HelloRepository: HelloRepositoryProtocol {
         self.api = api
         self.tokenStore = tokenStore
         self.deviceInfo = deviceInfo
+        self.kit = HelloKitRepository(api: api)
     }
 
     // MARK: - Auth
@@ -200,19 +127,11 @@ public actor HelloRepository: HelloRepositoryProtocol {
         return result
     }
 
-    public func currentUser() async throws -> SessionResult {
-        try await api.get("me")
-    }
-
     public func updateProfile(firstName: String, lastName: String) async throws -> HelloUser {
         try await api.patch(
             "me",
             body: HelloRequests.UpdateProfile(firstName: firstName, lastName: lastName)
         )
-    }
-
-    public func walletBalance() async throws -> WalletBalance {
-        try await api.get("wallet/balance")
     }
 
     /// Registers the real FCM token after sign-in.
@@ -256,154 +175,64 @@ public actor HelloRepository: HelloRepositoryProtocol {
         return result
     }
 
-    // MARK: - Chat
+    // MARK: - Chats and Cards (the kit's)
 
-    public func generalConversation() async throws -> Conversation {
-        try await api.get("conversations/general")
-    }
+    public func currentUser() async throws -> SessionResult { try await kit.currentUser() }
+    public func walletBalance() async throws -> WalletBalance { try await kit.walletBalance() }
 
-    public func conversations() async throws -> [Conversation] {
-        try await api.get("conversations")
-    }
-
+    public func generalConversation() async throws -> Conversation { try await kit.generalConversation() }
+    public func conversations() async throws -> [Conversation] { try await kit.conversations() }
     public func messages(conversationId: String, before: String?, limit: Int = 50) async throws -> MessagePage {
-        var query = ["limit": String(limit)]
-        if let before { query["before"] = before }
-        return try await api.get("conversations/\(conversationId)/messages", query: query)
+        try await kit.messages(conversationId: conversationId, before: before, limit: limit)
     }
-
-    public func sendText(
-        conversationId: String, text: String, clientMessageId: String
-    ) async throws -> SendMessageResult {
-        try await api.post(
-            "conversations/\(conversationId)/messages",
-            body: HelloRequests.SendMessage(text: text, form: nil, clientMessageId: clientMessageId),
-            idempotencyKey: clientMessageId
-        )
+    public func sendText(conversationId: String, text: String, clientMessageId: String) async throws -> SendMessageResult {
+        try await kit.sendText(conversationId: conversationId, text: text, clientMessageId: clientMessageId)
     }
-
-    /// Structured form path. The server composes the canonical command and runs the same parser as
-    /// free text, so the two can never diverge.
     public func sendPaymentForm(
-        conversationId: String, payee: String, voucherCode: String?,
-        amount: Double, clientMessageId: String
+        conversationId: String, payee: String, voucherCode: String?, amount: Double, clientMessageId: String
     ) async throws -> SendMessageResult {
-        try await api.post(
-            "conversations/\(conversationId)/messages",
-            body: HelloRequests.SendMessage(
-                text: nil,
-                form: .init(payee: payee, voucherCode: voucherCode, amount: amount),
-                clientMessageId: clientMessageId
-            ),
-            idempotencyKey: clientMessageId
-        )
+        try await kit.sendPaymentForm(conversationId: conversationId, payee: payee, voucherCode: voucherCode,
+                                      amount: amount, clientMessageId: clientMessageId)
     }
-
-    /// "Withdraw to bank" form. The server composes `<IBAN> [amount]` and runs the WhatsApp
-    /// withdrawal flow; nothing is held until the review card is confirmed.
     public func sendWithdrawalForm(
         conversationId: String, iban: String, amount: Double?, clientMessageId: String
     ) async throws -> SendMessageResult {
-        try await api.post(
-            "conversations/\(conversationId)/messages",
-            body: HelloRequests.SendMessage(
-                text: nil, form: nil, clientMessageId: clientMessageId,
-                withdrawal: .init(iban: iban, amount: amount)
-            ),
-            idempotencyKey: clientMessageId
-        )
+        try await kit.sendWithdrawalForm(conversationId: conversationId, iban: iban, amount: amount,
+                                         clientMessageId: clientMessageId)
     }
-
-    /// Operator top-up form. Only offered when `/me` says the caller is an operator; the server
-    /// checks that again, and the PIN, and never stores the PIN.
     public func sendTopUpForm(
         conversationId: String, recipientPhone: String, amount: Double, pin: String, clientMessageId: String
     ) async throws -> SendMessageResult {
-        try await api.post(
-            "conversations/\(conversationId)/messages",
-            body: HelloRequests.SendMessage(
-                text: nil, form: nil, clientMessageId: clientMessageId,
-                topUp: .init(recipientPhone: recipientPhone, amount: amount, pin: pin)
-            ),
-            idempotencyKey: clientMessageId
-        )
+        try await kit.sendTopUpForm(conversationId: conversationId, recipientPhone: recipientPhone, amount: amount,
+                                    pin: pin, clientMessageId: clientMessageId)
     }
 
-    // MARK: - Payments
-
-    public func paymentIntent(id: String) async throws -> PaymentIntent {
-        try await api.get("payments/intents/\(id)")
-    }
-
-    public func pendingPaymentIntent() async throws -> PaymentIntent? {
-        try await api.getOptional("payments/intents/pending")
-    }
-
-    /// Confirms a payment.
-    ///
-    /// `idempotencyKey` must be **stable across retries of the same user action** — that is what
-    /// makes a retry after a dropped response safe rather than a double charge. Generate it once
-    /// when the user taps, not per attempt.
+    public func paymentIntent(id: String) async throws -> PaymentIntent { try await kit.paymentIntent(id: id) }
+    public func pendingPaymentIntent() async throws -> PaymentIntent? { try await kit.pendingPaymentIntent() }
     public func confirmPayment(intentId: String, idempotencyKey: String) async throws -> PaymentIntent {
-        try await api.post("payments/intents/\(intentId)/confirm", idempotencyKey: idempotencyKey)
+        try await kit.confirmPayment(intentId: intentId, idempotencyKey: idempotencyKey)
     }
+    public func cancelPayment(intentId: String) async throws -> PaymentIntent { try await kit.cancelPayment(intentId: intentId) }
 
-    public func cancelPayment(intentId: String) async throws -> PaymentIntent {
-        try await api.post("payments/intents/\(intentId)/cancel")
-    }
-
-    // MARK: - Payees and history
-
-    /// Stores the app can pay, by name; `query` matches a name or a code.
     public func directory(query: String?, page: Int) async throws -> DirectoryPage {
-        var parameters = ["page": String(page), "size": "30"]
-        if let query = query?.trimmingCharacters(in: .whitespacesAndNewlines), !query.isEmpty {
-            parameters["q"] = query
-        }
-        return try await api.get("directory", query: parameters)
+        try await kit.directory(query: query, page: page)
     }
-
-    /// Who `payee` — the first word of a payment message — names. A hint, not a check.
-    public func lookupPayee(_ payee: String) async throws -> PayeeLookup {
-        try await api.get("recipients/lookup", query: ["payee": payee])
-    }
-
-    public func recentPayees() async throws -> [RecentPayee] {
-        try await api.get("payments/recent-payees")
-    }
-
-    /// Payments made and received, newest first; `before` is the previous page's `nextCursor`.
+    public func lookupPayee(_ payee: String) async throws -> PayeeLookup { try await kit.lookupPayee(payee) }
+    public func recentPayees() async throws -> [RecentPayee] { try await kit.recentPayees() }
     public func paymentHistory(query: String?, before: Int64?) async throws -> HistoryPage {
-        var parameters = ["limit": "30"]
-        if let query = query?.trimmingCharacters(in: .whitespacesAndNewlines), !query.isEmpty {
-            parameters["q"] = query
-        }
-        if let before { parameters["before"] = String(before) }
-        return try await api.get("payments/history", query: parameters)
+        try await kit.paymentHistory(query: query, before: before)
     }
 
-    // MARK: - Cards
-
-    public func wallet() async throws -> Wallet {
-        try await api.get("wallet")
+    public func wallet() async throws -> Wallet { try await kit.wallet() }
+    public func onePaySettings() async throws -> OnePaySettings { try await kit.onePaySettings() }
+    public func createOnePay(amount: Double, acceptedTerms: Bool, recipientName: String?,
+                             recipientPhone: String?) async throws -> Wallet {
+        try await kit.createOnePay(amount: amount, acceptedTerms: acceptedTerms,
+                                   recipientName: recipientName, recipientPhone: recipientPhone)
     }
-
-    public func onePaySettings() async throws -> OnePaySettings {
-        try await api.get("wallet/onepay/settings")
-    }
-
-    public func createOnePay(amount: Double, acceptedTerms: Bool) async throws -> Wallet {
-        try await api.post("wallet/onepay", body: HelloRequests.CreateOnePay(amount: amount, acceptedTerms: acceptedTerms))
-    }
-
-    /// `payload` is the POS tag URL's `p` parameter, verbatim.
-    public func tapPreview(payload: String) async throws -> TapPreview {
-        try await api.get("tap/preview", query: ["payload": payload])
-    }
-
-    /// Safe to repeat with the same body: the same receipt comes back, not a second charge.
+    public func tapPreview(payload: String) async throws -> TapPreview { try await kit.tapPreview(payload: payload) }
     public func tapPay(payload: String, cardId: String) async throws -> TapReceipt {
-        try await api.post("tap/pay", body: HelloRequests.TapPay(payload: payload, cardId: cardId))
+        try await kit.tapPay(payload: payload, cardId: cardId)
     }
 }
 

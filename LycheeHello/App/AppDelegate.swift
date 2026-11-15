@@ -84,12 +84,6 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     }
 }
 
-/// Whether the chat is on screen, so a push that arrives while it is can stay quiet.
-@MainActor
-enum ChatVisibility {
-    static var isShowing = false
-}
-
 /// Async box for the FCM token, so callers can await it rather than poll.
 ///
 /// Every continuation is resumed exactly once — either by `set` when the token arrives, or by the

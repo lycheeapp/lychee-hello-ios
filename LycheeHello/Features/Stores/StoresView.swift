@@ -229,46 +229,6 @@ struct StoresView: View {
     }
 }
 
-/// A payee's round avatar: their first letter on the brand tint.
-struct PayeeAvatar: View {
-    let name: String
-    var size: CGFloat = 48
-
-    var body: some View {
-        Circle()
-            .fill(Tokens.Colour.surfaceMuted)
-            .frame(width: size, height: size)
-            .overlay(
-                Text(String(name.trimmingCharacters(in: .whitespaces).prefix(1)).uppercased())
-                    .font(.system(size: size * 0.4, weight: .semibold))
-                    .foregroundStyle(Tokens.Colour.navy)
-            )
-            .accessibilityHidden(true)
-    }
-}
-
-/// A payee's name, with the verified mark when it is a business, store, branch or bus.
-struct PayeeNameLine: View {
-    let name: String
-    let verified: Bool
-    var font: Font = Tokens.Typography.headline
-
-    var body: some View {
-        HStack(spacing: Tokens.Spacing.xs) {
-            Text(name)
-                .font(font)
-                .foregroundStyle(Tokens.Colour.textPrimary)
-                .lineLimit(1)
-            if verified {
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 12))
-                    .foregroundStyle(Tokens.Colour.brand)
-                    .accessibilityLabel(L("payee_verified"))
-            }
-        }
-    }
-}
-
 /// Bottom navigation — Chats / Stores / Cards / Settings (no Cards for a business).
 ///
 /// A standard `TabView` rather than the screenshot's floating pill: it gives the correct safe-area
